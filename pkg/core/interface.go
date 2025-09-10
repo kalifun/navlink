@@ -21,7 +21,7 @@ type PublishOptions struct {
 	TimeOut time.Duration
 }
 
-type MessageHandler = func(ctx context.Context, msg Message) error
+type MessageHandler = func(ctx context.Context, msg *Message) error
 
 // Message represents a transport-level message
 type Message struct {
@@ -39,8 +39,8 @@ type Subscription interface {
 
 // Converter handles protocol conversion
 type Converter interface {
-	ToDomainMsg(ctx context.Context, msg Message) (DomainMessage, error)
-	FromDomainMsg(ctx context.Context, msg DomainMessage) (TransportPublish, error)
+	ToDomainMsg(ctx context.Context, msg *Message) (*DomainMessage, error)
+	FromDomainMsg(ctx context.Context, msg *DomainMessage) (TransportPublish, error)
 }
 
 type DomainMessage struct {
@@ -61,12 +61,12 @@ type TransportPublish struct {
 
 // EventBus handles internal message routing
 type EventBus interface {
-	Publish(ctx context.Context, topic string, msg DomainMessage) error
+	Publish(ctx context.Context, topic string, msg *DomainMessage) error
 	Subscribe(ctx context.Context, topic string, handler EventHandler) (EventSubscription, error)
 }
 
 // EventHandler handles domain events
-type EventHandler = func(ctx context.Context, msg DomainMessage) error
+type EventHandler = func(ctx context.Context, msg *DomainMessage) error
 
 // EventSubscription represents an event subscription
 type EventSubscription interface {
@@ -75,11 +75,11 @@ type EventSubscription interface {
 }
 
 type Router interface {
-	Route(ctx context.Context, msg DomainMessage) error
+	Route(ctx context.Context, msg *DomainMessage) error
 	RegisterProcessor(msgType string, processor Processor)
 }
 
 type Processor interface {
-	Process(ctx context.Context, msg DomainMessage) error
+	Process(ctx context.Context, msg *DomainMessage) error
 	Type() string // Returns the message type this processor handles
 }

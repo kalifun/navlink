@@ -12,7 +12,7 @@ type MemoryEventBus struct {
 	cancel      context.CancelFunc
 }
 
-func (e *MemoryEventBus) Publish(ctx context.Context, topic string, msg DomainMessage) error {
+func (e *MemoryEventBus) Publish(ctx context.Context, topic string, msg *DomainMessage) error {
 	e.mu.RLock()
 	handlers := e.subscribers[topic]
 	e.mu.RUnlock()
