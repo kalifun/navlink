@@ -83,3 +83,25 @@ type Processor interface {
 	Process(ctx context.Context, msg *DomainMessage) error
 	Type() string // Returns the message type this processor handles
 }
+
+// Registry manages component registration
+type Registry interface {
+	RegisterTransport(name string, factory TransportFactory) error
+	RegisterProcessor(name string, factory ProcessorFactory) error
+	RegisterConverter(name string, factory ConverterFactory) error
+	GetTransport(name string) (TransportFactory, error)
+	GetProcessor(name string) (ProcessorFactory, error)
+	GetConverter(name string) (ConverterFactory, error)
+	ListTransports() []string
+	ListProcessors() []string
+	ListConverters() []string
+}
+
+// TransportFactory creates transport instances
+type TransportFactory func(config map[string]interface{}) (Transport, error)
+
+// ConverterFactory creates converter instances
+type ConverterFactory func(config map[string]interface{}) (Converter, error)
+
+// ProcessorFactory creates processor instances
+type ProcessorFactory func(config map[string]interface{}) (Processor, error)
