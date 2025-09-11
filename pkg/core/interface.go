@@ -105,3 +105,13 @@ type ConverterFactory func(config map[string]interface{}) (Converter, error)
 
 // ProcessorFactory creates processor instances
 type ProcessorFactory func(config map[string]interface{}) (Processor, error)
+
+type SessionStore interface {
+	SaveSession(ctx context.Context, id string, meta SessionMeta) error
+	GetSession(ctx context.Context, id string) (SessionMeta, error)
+	DeleteSession(ctx context.Context, id string) error
+	ListSessions(ctx context.Context) ([]SessionMeta, error)
+	AddSubscription(ctx context.Context, sessionID string, sub SubscriptionMeta) error
+	RemoveSubscription(ctx context.Context, sessionID, topic string) error
+	ListSubscriptions(ctx context.Context, sessionID string) ([]SubscriptionMeta, error)
+}
