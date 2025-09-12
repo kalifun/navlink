@@ -11,7 +11,7 @@ import (
 // MQTTSubscription implements MQTT subscription with proper lifecycle management
 type MQTTSubscription struct {
 	topic     string
-	transport *MqttTransport
+	transport *Transport
 	mu        sync.RWMutex
 	active    bool
 }

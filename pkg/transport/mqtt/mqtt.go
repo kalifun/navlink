@@ -12,7 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type MqttConfig struct {
+type MQTTConfig struct {
 	Broker               string        `json:"broker" yaml:"broker"`
 	ClientID             string        `json:"clientId" yaml:"clientId"`
 	Username             string        `json:"username" yaml:"username"`
@@ -41,9 +41,9 @@ type WillMessage struct {
 	Payload  string `json:"payload" yaml:"payload"`
 }
 
-type MqttTransport struct {
+type Transport struct {
 	id             string
-	config         MqttConfig
+	config         MQTTConfig
 	client         mqtt.Client
 	logger         *logrus.Logger
 	mu             sync.RWMutex
@@ -56,16 +56,35 @@ type MqttTransport struct {
 	cancel         context.CancelFunc
 }
 
-func (mt *MqttTransport) ID() string {
+func NewTransport(id string, config MQTTConfig) *Transport {
+	logger := logrus.New()
+	logger.SetFormatter(&logrus.JSONFormatter{})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	return &Transport{
+		id:             id,
+		config:         config,
+		logger:         logger,
+		mu:             sync.RWMutex{},
+		handlers:       make(map[string]core.MessageHandler),
+		subscriptions:  make(map[string]mqtt.Token),
+		connectChan:    make(chan struct{}, 1),
+		disconnectChan: make(chan struct{}, 1),
+		ctx:            ctx,
+		cancel:         cancel,
+	}
+}
+
+func (mt *Transport) ID() string {
 	return mt.id
 }
 
-func (mt *MqttTransport) Start(ctx context.Context) error {
+func (mt *Transport) Start(ctx context.Context) error {
 	mt.mu.Lock()
 	defer mt.mu.Unlock()
 
 	if mt.running {
-		return errors.MqttTransportAlreadyRunning
+		return errors.MQTTTransportAlreadyRunning
 	}
 
 	if err := mt.validateConfig(); err != nil {
@@ -88,12 +107,12 @@ func (mt *MqttTransport) Start(ctx context.Context) error {
 	return nil
 }
 
-func (mt *MqttTransport) Stop(ctx context.Context) error {
+func (mt *Transport) Stop(ctx context.Context) error {
 	mt.mu.Lock()
 	defer mt.mu.Unlock()
 
 	if !mt.running {
-		return errors.MqttTransportNotRunning
+		return errors.MQTTTransportNotRunning
 	}
 
 	mt.logger.WithField("transport_id", mt.id).Info("Stopping MQTT transport")
@@ -110,12 +129,12 @@ func (mt *MqttTransport) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (mt *MqttTransport) Publish(ctx context.Context, topic string, payload []byte, opts core.PublishOptions) error {
+func (mt *Transport) Publish(ctx context.Context, topic string, payload []byte, opts core.PublishOptions) error {
 	mt.mu.RLock()
 	defer mt.mu.RUnlock()
 
 	if !mt.running {
-		return errors.MqttTransportNotRunning
+		return errors.MQTTTransportNotRunning
 	}
 
 	if mt.client == nil || !mt.client.IsConnected() {
@@ -157,11 +176,11 @@ func (mt *MqttTransport) Publish(ctx context.Context, topic string, payload []by
 	return nil
 }
 
-func (mt *MqttTransport) Subscribe(ctx context.Context, topic string, handler core.MessageHandler) (core.Subscription, error) {
+func (mt *Transport) Subscribe(ctx context.Context, topic string, handler core.MessageHandler) (core.Subscription, error) {
 	mt.mu.Lock()
 	defer mt.mu.Unlock()
 	if !mt.running {
-		return nil, errors.MqttTransportNotRunning
+		return nil, errors.MQTTTransportNotRunning
 	}
 
 	if mt.client == nil || !mt.client.IsConnected() {
@@ -199,7 +218,7 @@ func (mt *MqttTransport) Subscribe(ctx context.Context, topic string, handler co
 }
 
 // validateConfig validates MQTT configuration
-func (mt *MqttTransport) validateConfig() error {
+func (mt *Transport) validateConfig() error {
 	if mt.config.Broker == "" {
 		return errors.ConfigurationError.Args("broker URL is required")
 	}
@@ -222,7 +241,7 @@ func (mt *MqttTransport) validateConfig() error {
 	return nil
 }
 
-func (mt *MqttTransport) connect() error {
+func (mt *Transport) connect() error {
 	mqttOpts := mqtt.NewClientOptions()
 	mqttOpts.AddBroker(mt.config.Broker)
 	mqttOpts.SetClientID(mt.config.ClientID)
@@ -256,7 +275,7 @@ func (mt *MqttTransport) connect() error {
 	return errors.ConnectionFailed
 }
 
-func (mt *MqttTransport) onConnect(client mqtt.Client) {
+func (mt *Transport) onConnect(client mqtt.Client) {
 	mt.logger.WithFields(logrus.Fields{
 		"transport_id": mt.id,
 		"broker":       mt.config.Broker,
@@ -267,7 +286,7 @@ func (mt *MqttTransport) onConnect(client mqtt.Client) {
 	}
 }
 
-func (mt *MqttTransport) onConnectionLost(client mqtt.Client, err error) {
+func (mt *Transport) onConnectionLost(client mqtt.Client, err error) {
 	mt.logger.WithFields(logrus.Fields{
 		"transport_id": mt.id,
 		"error":        err.Error(),
@@ -279,7 +298,7 @@ func (mt *MqttTransport) onConnectionLost(client mqtt.Client, err error) {
 	}
 }
 
-func (mt *MqttTransport) onReconnecting(client mqtt.Client, opts *mqtt.ClientOptions) {
+func (mt *Transport) onReconnecting(client mqtt.Client, opts *mqtt.ClientOptions) {
 	mt.logger.WithFields(logrus.Fields{
 		"transport_id": mt.id,
 		"broker":       mt.config.Broker,
@@ -287,7 +306,7 @@ func (mt *MqttTransport) onReconnecting(client mqtt.Client, opts *mqtt.ClientOpt
 }
 
 // handleMessage processes incoming MQTT messages
-func (mt *MqttTransport) handleMessage(msg mqtt.Message, handler core.MessageHandler) {
+func (mt *Transport) handleMessage(msg mqtt.Message, handler core.MessageHandler) {
 	mt.logger.WithFields(logrus.Fields{
 		"transport_id": mt.id,
 		"topic":        msg.Topic(),
@@ -322,10 +341,24 @@ func (mt *MqttTransport) handleMessage(msg mqtt.Message, handler core.MessageHan
 }
 
 // removeSubscription removes a subscription from internal tracking
-func (mt *MqttTransport) removeSubscription(topic string) {
+func (mt *Transport) removeSubscription(topic string) {
 	mt.mu.Lock()
 	defer mt.mu.Unlock()
 
 	delete(mt.handlers, topic)
 	delete(mt.subscriptions, topic)
+}
+
+// IsRunning returns whether the transport is running
+func (mt *Transport) IsRunning() bool {
+	mt.mu.RLock()
+	defer mt.mu.RUnlock()
+	return mt.running && mt.client != nil && mt.client.IsConnected()
+}
+
+// GetConfig returns the MQTT configuration
+func (mt *Transport) GetConfig() MQTTConfig {
+	mt.mu.RLock()
+	defer mt.mu.RUnlock()
+	return mt.config
 }
