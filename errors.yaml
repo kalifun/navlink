@@ -1,5 +1,5 @@
 error:
-  - key: MqttTransportNotRunning
+  - key: MQTTTransportNotRunning
     code: TransportNotRunning
     category: system
     severity: error
@@ -8,7 +8,7 @@ error:
       cn: "MQTT转换器没有启动"
       en: "MQTT transport is not running"
 
-  - key: MqttTransportAlreadyRunning
+  - key: MQTTTransportAlreadyRunning
     code: TransportAlreadyRunning
     category: system
     severity: error

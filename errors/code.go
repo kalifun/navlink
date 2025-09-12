@@ -3,8 +3,8 @@ package errors
 
 import "github.com/kalifun/glitch/repo/gerr"
 
-var mqttTransportNotRunningErr = gerr.ErrWrapper{
-	Key:      "MqttTransportNotRunning",
+var mQTTTransportNotRunningErr = gerr.ErrWrapper{
+	Key:      "MQTTTransportNotRunning",
 	Code:     "TransportNotRunning",
 	Category: "system",
 	Severity: gerr.SeverityError,
@@ -15,8 +15,8 @@ var mqttTransportNotRunningErr = gerr.ErrWrapper{
 	Description: "mqtt transport not running",
 }
 
-var mqttTransportAlreadyRunningErr = gerr.ErrWrapper{
-	Key:      "MqttTransportAlreadyRunning",
+var mQTTTransportAlreadyRunningErr = gerr.ErrWrapper{
+	Key:      "MQTTTransportAlreadyRunning",
 	Code:     "TransportAlreadyRunning",
 	Category: "system",
 	Severity: gerr.SeverityError,
@@ -33,8 +33,8 @@ var connectionFailedErr = gerr.ErrWrapper{
 	Category: "network",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"cn": "连接MQTT代理失败",
 		"en": "Failed to connect to MQTT broker",
+		"cn": "连接MQTT代理失败",
 	},
 	Description: "failed to connect to mqtt broker",
 }
@@ -57,8 +57,8 @@ var subscriptionFailedErr = gerr.ErrWrapper{
 	Category: "network",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"cn": "订阅主题失败",
 		"en": "Failed to subscribe to topic",
+		"cn": "订阅主题失败",
 	},
 	Description: "failed to subscribe to topic",
 }
@@ -81,8 +81,8 @@ var invalidTopicErr = gerr.ErrWrapper{
 	Category: "validation",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"en": "Invalid MQTT topic format",
 		"cn": "无效的MQTT主题格式",
+		"en": "Invalid MQTT topic format",
 	},
 	Description: "invalid mqtt topic format",
 }
@@ -93,8 +93,8 @@ var clientNotConnectedErr = gerr.ErrWrapper{
 	Category: "network",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"en": "MQTT client is not connected",
 		"cn": "MQTT客户端未连接",
+		"en": "MQTT client is not connected",
 	},
 	Description: "mqtt client is not connected",
 }
@@ -105,8 +105,8 @@ var reconnectFailedErr = gerr.ErrWrapper{
 	Category: "network",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"cn": "重新连接代理失败",
 		"en": "Failed to reconnect to broker",
+		"cn": "重新连接代理失败",
 	},
 	Description: "failed to reconnect to broker",
 }
@@ -129,8 +129,8 @@ var willMessageErrorErr = gerr.ErrWrapper{
 	Category: "validation",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"cn": "遗嘱消息配置无效",
 		"en": "Invalid will message configuration",
+		"cn": "遗嘱消息配置无效",
 	},
 	Description: "invalid will message configuration",
 }
@@ -165,8 +165,8 @@ var brokerUnavailableErr = gerr.ErrWrapper{
 	Category: "network",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"en": "MQTT broker is unavailable",
 		"cn": "MQTT代理不可用",
+		"en": "MQTT broker is unavailable",
 	},
 	Description: "mqtt broker is unavailable",
 }
@@ -201,8 +201,8 @@ var alreadySubscribedErr = gerr.ErrWrapper{
 	Category: "validation",
 	Severity: gerr.SeverityWarning,
 	Messages: map[string]string{
-		"en": "Already subscribed to topic",
 		"cn": "已经订阅该主题",
+		"en": "Already subscribed to topic",
 	},
 	Description: "already subscribed to topic",
 }
@@ -225,8 +225,8 @@ var invalidPayloadErr = gerr.ErrWrapper{
 	Category: "validation",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"cn": "无效的消息负载",
 		"en": "Invalid message payload",
+		"cn": "无效的消息负载",
 	},
 	Description: "invalid message payload",
 }
@@ -267,11 +267,11 @@ var unsubscribeFailedErr = gerr.ErrWrapper{
 	Description: "failed to unsubscribe from topic",
 }
 
-// MqttTransportNotRunning represents mqtt transport not running
-var MqttTransportNotRunning = gerr.NewError(mqttTransportNotRunningErr)
+// MQTTTransportNotRunning represents mqtt transport not running
+var MQTTTransportNotRunning = gerr.NewError(mQTTTransportNotRunningErr)
 
-// MqttTransportAlreadyRunning represents mqtt transport already running
-var MqttTransportAlreadyRunning = gerr.NewError(mqttTransportAlreadyRunningErr)
+// MQTTTransportAlreadyRunning represents mqtt transport already running
+var MQTTTransportAlreadyRunning = gerr.NewError(mQTTTransportAlreadyRunningErr)
 
 // ConnectionFailed represents failed to connect to mqtt broker
 var ConnectionFailed = gerr.NewError(connectionFailedErr)
@@ -334,10 +334,10 @@ var SubscriptionNotActive = gerr.NewError(subscriptionNotActiveErr)
 var UnsubscribeFailed = gerr.NewError(unsubscribeFailedErr)
 
 func init() {
-	if err := gerr.Register(mqttTransportNotRunningErr); err != nil {
+	if err := gerr.Register(mQTTTransportNotRunningErr); err != nil {
 		panic(err)
 	}
-	if err := gerr.Register(mqttTransportAlreadyRunningErr); err != nil {
+	if err := gerr.Register(mQTTTransportAlreadyRunningErr); err != nil {
 		panic(err)
 	}
 	if err := gerr.Register(connectionFailedErr); err != nil {
@@ -402,14 +402,14 @@ func init() {
 	}
 }
 
-// NewMqttTransportNotRunningWithMetadata creates a MqttTransportNotRunning error with metadata
-func NewMqttTransportNotRunningWithMetadata(key string, value interface{}) *gerr.Error {
-	return MqttTransportNotRunning.With(key, value)
+// NewMQTTTransportNotRunningWithMetadata creates a MQTTTransportNotRunning error with metadata
+func NewMQTTTransportNotRunningWithMetadata(key string, value interface{}) *gerr.Error {
+	return MQTTTransportNotRunning.With(key, value)
 }
 
-// NewMqttTransportAlreadyRunningWithMetadata creates a MqttTransportAlreadyRunning error with metadata
-func NewMqttTransportAlreadyRunningWithMetadata(key string, value interface{}) *gerr.Error {
-	return MqttTransportAlreadyRunning.With(key, value)
+// NewMQTTTransportAlreadyRunningWithMetadata creates a MQTTTransportAlreadyRunning error with metadata
+func NewMQTTTransportAlreadyRunningWithMetadata(key string, value interface{}) *gerr.Error {
+	return MQTTTransportAlreadyRunning.With(key, value)
 }
 
 // NewConnectionFailedWithMetadata creates a ConnectionFailed error with metadata
