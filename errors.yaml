@@ -1,0 +1,198 @@
+error:
+  - key: MqttTransportNotRunning
+    code: TransportNotRunning
+    category: system
+    severity: error
+    description: mqtt transport not running
+    message:
+      cn: "MQTT转换器没有启动"
+      en: "MQTT transport is not running"
+
+  - key: MqttTransportAlreadyRunning
+    code: TransportAlreadyRunning
+    category: system
+    severity: error
+    description: "mqtt transport already running"
+    message:
+      cn: "MQTT转换器已经启动"
+      en: "MQTT transport already running"
+
+  - key: ConnectionFailed
+    code: ConnectionFailed
+    category: network
+    severity: error
+    description: failed to connect to mqtt broker
+    message:
+      cn: "连接MQTT代理失败"
+      en: "Failed to connect to MQTT broker"
+
+  - key: AuthenticationFailed
+    code: AuthenticationFailed
+    category: security
+    severity: error
+    description: mqtt authentication failed
+    message:
+      cn: "MQTT认证失败"
+      en: "MQTT authentication failed"
+
+  - key: SubscriptionFailed
+    code: SubscriptionFailed
+    category: network
+    severity: error
+    description: failed to subscribe to topic
+    message:
+      cn: "订阅主题失败"
+      en: "Failed to subscribe to topic"
+
+  - key: PublishFailed
+    code: PublishFailed
+    category: network
+    severity: error
+    description: failed to publish message
+    message:
+      cn: "发布消息失败"
+      en: "Failed to publish message"
+
+  - key: InvalidTopic
+    code: InvalidTopic
+    category: validation
+    severity: error
+    description: invalid mqtt topic format
+    message:
+      cn: "无效的MQTT主题格式"
+      en: "Invalid MQTT topic format"
+
+  - key: ClientNotConnected
+    code: ClientNotConnected
+    category: network
+    severity: error
+    description: mqtt client is not connected
+    message:
+      cn: "MQTT客户端未连接"
+      en: "MQTT client is not connected"
+
+  - key: ReconnectFailed
+    code: ReconnectFailed
+    category: network
+    severity: error
+    description: failed to reconnect to broker
+    message:
+      cn: "重新连接代理失败"
+      en: "Failed to reconnect to broker"
+
+  - key: TLSConfigError
+    code: TLSConfigError
+    category: security
+    severity: error
+    description: invalid tls configuration
+    message:
+      cn: "TLS配置无效"
+      en: "Invalid TLS configuration"
+
+  - key: WillMessageError
+    code: WillMessageError
+    category: validation
+    severity: error
+    description: invalid will message configuration
+    message:
+      cn: "遗嘱消息配置无效"
+      en: "Invalid will message configuration"
+
+  - key: QosNotSupported
+    code: QosNotSupported
+    category: validation
+    severity: error
+    description: requested qos level not supported
+    message:
+      cn: "不支持的QoS级别"
+      en: "Requested QoS level not supported"
+
+  - key: MessageTooLarge
+    code: MessageTooLarge
+    category: validation
+    severity: error
+    description: message size exceeds limit
+    message:
+      cn: "消息大小超过限制"
+      en: "Message size exceeds limit"
+
+  - key: BrokerUnavailable
+    code: BrokerUnavailable
+    category: network
+    severity: error
+    description: mqtt broker is unavailable
+    message:
+      cn: "MQTT代理不可用"
+      en: "MQTT broker is unavailable"
+
+  - key: ProtocolError
+    code: ProtocolError
+    category: protocol
+    severity: error
+    description: mqtt protocol error
+    message:
+      cn: "MQTT协议错误"
+      en: "MQTT protocol error"
+
+  - key: TimeoutError
+    code: TimeoutError
+    category: network
+    severity: error
+    description: operation timed out
+    message:
+      cn: "操作超时"
+      en: "Operation timed out"
+
+  - key: AlreadySubscribed
+    code: AlreadySubscribed
+    category: validation
+    severity: warning
+    description: already subscribed to topic
+    message:
+      cn: "已经订阅该主题"
+      en: "Already subscribed to topic"
+
+  - key: NotSubscribed
+    code: NotSubscribed
+    category: validation
+    severity: warning
+    description: not subscribed to topic
+    message:
+      cn: "未订阅该主题"
+      en: "Not subscribed to topic"
+
+  - key: InvalidPayload
+    code: InvalidPayload
+    category: validation
+    severity: error
+    description: invalid message payload
+    message:
+      cn: "无效的消息负载"
+      en: "Invalid message payload"
+
+  - key: ConfigurationError
+    code: ConfigurationError
+    category: validation
+    severity: error
+    description: invalid mqtt configuration
+    message:
+      cn: "MQTT配置无效: %s"
+      en: "Invalid MQTT configuration: %s"
+
+  - key: SubscriptionNotActive
+    code: SubscriptionNotActive
+    category: network
+    severity: error
+    description: subscription to topic is not active
+    message:
+      cn: "主题 %s 的订阅未激活"
+      en: "Subscription to topic %s is not active"
+
+  - key: UnsubscribeFailed
+    code: UnsubscribeFailed
+    category: network
+    severity: error
+    description: failed to unsubscribe from topic
+    message:
+      cn: "取消订阅主题 %s 失败: %v"
+      en: "Failed to unsubscribe from topic %s: %v"
