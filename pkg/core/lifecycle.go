@@ -15,7 +15,7 @@ import (
 //		"SessionStore", // Depends on EventBus
 //		"ComponentRegistry", // Depends on EventBus
 //		"MessageRouter", // Depends on EventBus, Registry
-//		"MQTTTransport", // Rely on EventBus, Router
+//		"Transport", // Rely on EventBus, Router
 //		"WebSocketTransport", // Depends on EventBus, Router
 //	}
 type LifecycleManager struct {
