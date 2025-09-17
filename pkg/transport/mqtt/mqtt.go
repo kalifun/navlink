@@ -316,8 +316,8 @@ func (mt *Transport) handleMessage(msg mqtt.Message, handler core.MessageHandler
 	}).Debug("Received MQTT message")
 
 	message := &core.Message{
-		Topic:  msg.Topic(),
-		Paylod: msg.Payload(),
+		Topic:   msg.Topic(),
+		Payload: msg.Payload(),
 		Meta: map[string]string{
 			"source":     "mqtt",
 			"qos":        fmt.Sprintf("%d", msg.Qos()),

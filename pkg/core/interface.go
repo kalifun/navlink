@@ -25,10 +25,10 @@ type MessageHandler = func(ctx context.Context, msg *Message) error
 
 // Message represents a transport-level message
 type Message struct {
-	Topic  string
-	Paylod []byte
-	Meta   map[string]string
-	Time   time.Time
+	Topic   string
+	Payload []byte
+	Meta    map[string]string
+	Time    time.Time
 }
 
 // Subscription represents a message subscription
