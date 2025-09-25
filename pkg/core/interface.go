@@ -3,6 +3,8 @@ package core
 import (
 	"context"
 	"time"
+
+	"github.com/kalifun/navlink/pkg/types"
 )
 
 // Transport defines the interface for message transport
@@ -37,22 +39,7 @@ type Subscription interface {
 	Topic() string
 }
 
-// Converter handles protocol conversion
-type Converter interface {
-	ToDomainMsg(ctx context.Context, msg *Message) (*DomainMessage, error)
-	FromDomainMsg(ctx context.Context, msg *DomainMessage) (TransportPublish, error)
-}
-
-type DomainMessage struct {
-	ID        string            // Unique message ID for idempotency
-	Type      string            // Domain type: Order/State/Action/Event
-	Source    string            // Original source
-	Payload   any               // Deserialized payload (dynamic)
-	Meta      map[string]string // Metadata (correlationId, tenant, etc.)
-	Timestamp time.Time         // Message Timestamp
-}
-
-// TransportPublish represents a message to be published
+// Conve// TransportPublish represents a message to be published
 type TransportPublish struct {
 	Topic   string
 	Payload []byte
@@ -61,12 +48,11 @@ type TransportPublish struct {
 
 // EventBus handles internal message routing
 type EventBus interface {
-	Publish(ctx context.Context, topic string, msg *DomainMessage) error
-	Subscribe(ctx context.Context, topic string, handler EventHandler) (EventSubscription, error)
+	LifecycleComponent
+	Publish(ctx context.Context, msg *types.DomainMessage) error
+	Subscribe(ctx context.Context, topic string) (<-chan *types.DomainMessage, error)
+	Unsubscribe(ctx context.Context, topic string, sub <-chan *types.DomainMessage) error
 }
-
-// EventHandler handles domain events
-type EventHandler = func(ctx context.Context, msg *DomainMessage) error
 
 // EventSubscription represents an event subscription
 type EventSubscription interface {
@@ -74,34 +60,13 @@ type EventSubscription interface {
 	Topic() string
 }
 
-type Router interface {
-	Route(ctx context.Context, msg *DomainMessage) error
-	RegisterProcessor(msgType string, processor Processor)
-}
-
 type Processor interface {
-	Process(ctx context.Context, msg *DomainMessage) error
+	Process(ctx context.Context, msg *types.DomainMessage) error
 	Type() string // Returns the message type this processor handles
-}
-
-// Registry manages component registration
-type Registry interface {
-	RegisterTransport(name string, factory TransportFactory) error
-	RegisterProcessor(name string, factory ProcessorFactory) error
-	RegisterConverter(name string, factory ConverterFactory) error
-	GetTransport(name string) (TransportFactory, error)
-	GetProcessor(name string) (ProcessorFactory, error)
-	GetConverter(name string) (ConverterFactory, error)
-	ListTransports() []string
-	ListProcessors() []string
-	ListConverters() []string
 }
 
 // TransportFactory creates transport instances
 type TransportFactory func(config map[string]interface{}) (Transport, error)
-
-// ConverterFactory creates converter instances
-type ConverterFactory func(config map[string]interface{}) (Converter, error)
 
 // ProcessorFactory creates processor instances
 type ProcessorFactory func(config map[string]interface{}) (Processor, error)
