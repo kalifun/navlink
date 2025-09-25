@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/kalifun/navlink/pkg/types"
 )
 
 // MessageRouter implements message routing with retry logic
@@ -39,14 +41,14 @@ type ProcessorMetrics struct {
 	AverageTime       time.Duration
 }
 
-func (mr *MessageRouter) Route(ctx context.Context, msg *DomainMessage) error {
-	startTime := time.Now()
+func (mr *MessageRouter) Route(ctx context.Context, msg *types.DomainMessage) error {
+    startTime := time.Now()
 
-	if msg != nil {
-		return fmt.Errorf("domain message cannot be nil")
-	}
+    if msg == nil {
+        return fmt.Errorf("domain message cannot be nil")
+    }
 
-	processor, exist := mr.getProcessor(msg.Type)
+	processor, exist := mr.getProcessor(string(msg.Type))
 	if !exist {
 		return fmt.Errorf("no processor registered for message type: %s", msg.Type)
 	}
@@ -60,7 +62,12 @@ func (mr *MessageRouter) Route(ctx context.Context, msg *DomainMessage) error {
 }
 
 func (mr *MessageRouter) RegisterProcessor(msgType string, processor Processor) {
-	panic("not implemented") // TODO: Implement
+    mr.mu.Lock()
+    defer mr.mu.Unlock()
+    if mr.processors == nil {
+        mr.processors = make(map[string]Processor)
+    }
+    mr.processors[msgType] = processor
 }
 
 func (mr *MessageRouter) getProcessor(msgType string) (Processor, bool) {
@@ -71,7 +78,7 @@ func (mr *MessageRouter) getProcessor(msgType string) (Processor, bool) {
 	return processor, exist
 }
 
-func (mr *MessageRouter) processWithRetry(ctx context.Context, msg *DomainMessage, processor Processor) error {
+func (mr *MessageRouter) processWithRetry(ctx context.Context, msg *types.DomainMessage, processor Processor) error {
 	var lastErr error
 	for attempt := 0; attempt <= mr.config.MaxRetries; attempt++ {
 		if ctx.Err() != nil {
@@ -82,7 +89,7 @@ func (mr *MessageRouter) processWithRetry(ctx context.Context, msg *DomainMessag
 		err := processor.Process(ctx, msg)
 		processingTime := time.Since(startTime)
 
-		mr.updateProcessorStats(msg.Type, err, processingTime)
+		mr.updateProcessorStats(string(msg.Type), err, processingTime)
 
 		if err == nil {
 			return nil
@@ -131,18 +138,21 @@ func (mr *MessageRouter) updateProcessorStats(msgType string, err error, process
 }
 
 func (mr *MessageRouter) updateMetrics(err error, processingTime time.Duration) {
-	mr.metrics.mu.Lock()
-	defer mr.metrics.mu.Unlock()
+    if mr.metrics == nil {
+        mr.metrics = &RouterMetrics{ProcessorStats: make(map[string]*ProcessorMetrics)}
+    }
+    mr.metrics.mu.Lock()
+    defer mr.metrics.mu.Unlock()
 
 	mr.metrics.MessagesProcessed++
 	if err != nil {
 		mr.metrics.MessagesFailed++
 	}
 
-	if mr.metrics.MessagesProcessed == 1 {
-		mr.metrics.AverageProcessingTime = processingTime
-	} else {
-		total := mr.metrics.AverageProcessingTime*time.Duration(mr.metrics.MessagesProcessed-1) - processingTime
-		mr.metrics.AverageProcessingTime = total / time.Duration(mr.metrics.MessagesProcessed)
-	}
+    if mr.metrics.MessagesProcessed == 1 {
+        mr.metrics.AverageProcessingTime = processingTime
+    } else {
+        total := mr.metrics.AverageProcessingTime*time.Duration(mr.metrics.MessagesProcessed-1) + processingTime
+        mr.metrics.AverageProcessingTime = total / time.Duration(mr.metrics.MessagesProcessed)
+    }
 }
