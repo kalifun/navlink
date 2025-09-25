@@ -7,6 +7,8 @@ github.com/gorilla/websocket v1.5.3 h1:saDtZ6Pbx/0u+bgYQ3q96pZgCzfhKXGPqt7kZ72aN
 github.com/gorilla/websocket v1.5.3/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 github.com/kalifun/glitch v0.2.2 h1:idi9beCUR+gKxMjQTsRool/JqGtNhXkzLDxj1fXZyIk=
 github.com/kalifun/glitch v0.2.2/go.mod h1:gOc/pSskF8up9kdkgZZQoreJmaHhf4eyZvvAgn4Y8aY=
+github.com/kalifun/vda5050-types-go v0.5.1 h1:Jz+2HxueXBIX2UXMs9YDKHYJNRm8M6g6/UQu8Xq5rbQ=
+github.com/kalifun/vda5050-types-go v0.5.1/go.mod h1:p0xzzgwCdM9BsY33btFchhXjWszEez0w3w1iR3dK4oE=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/sirupsen/logrus v1.9.3 h1:dueUQJ1C2q9oE3F7wvmSGAaVtTmUizReu6fjN8uqzbQ=
