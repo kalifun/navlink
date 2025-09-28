@@ -62,7 +62,7 @@ type EventSubscription interface {
 
 type Processor interface {
 	Process(ctx context.Context, msg *types.DomainMessage) error
-	Type() string // Returns the message type this processor handles
+	Type() types.DomainMessageType // Returns the message type this processor handles
 }
 
 // TransportFactory creates transport instances

@@ -29,13 +29,14 @@ type LifecycleManager struct {
 }
 
 type LifecycleComponent interface {
+	ID() string
 	Start(ctx context.Context) error
 	Stop(ctx context.Context) error
 }
 
 func (lm *LifecycleManager) Start(ctx context.Context) error {
-    lm.mu.Lock()
-    defer lm.mu.Unlock()
+	lm.mu.Lock()
+	defer lm.mu.Unlock()
 
 	if lm.started {
 		return fmt.Errorf("lifecycle already started")
@@ -47,16 +48,16 @@ func (lm *LifecycleManager) Start(ctx context.Context) error {
 			continue
 		}
 
-        // Start with timeout
-        startCtx, cancel := context.WithTimeout(ctx, lm.shutdownTimeout)
-        defer cancel()
+		// Start with timeout
+		startCtx, cancel := context.WithTimeout(ctx, lm.shutdownTimeout)
+		defer cancel()
 
-        if err := component.Start(startCtx); err != nil {
-            // Stop already started components
-            lm.stopComponents(startCtx)
-            return fmt.Errorf("failed to start component %s: %w", componentID, err)
-        }
-    }
+		if err := component.Start(startCtx); err != nil {
+			// Stop already started components
+			lm.stopComponents(startCtx)
+			return fmt.Errorf("failed to start component %s: %w", componentID, err)
+		}
+	}
 
 	lm.started = true
 	return nil
@@ -75,14 +76,14 @@ func (lm *LifecycleManager) Stop(ctx context.Context) error {
 }
 
 func (lm *LifecycleManager) AddComponent(component LifecycleComponent, dependencies ...string) error {
-    lm.mu.Lock()
-    defer lm.mu.Unlock()
+	lm.mu.Lock()
+	defer lm.mu.Unlock()
 
-    componentID := lm.getComponentID(component)
+	componentID := lm.getComponentID(component)
 
-    if lm.dependencies == nil {
-        lm.dependencies = make(map[string][]string)
-    }
+	if lm.dependencies == nil {
+		lm.dependencies = make(map[string][]string)
+	}
 
 	if err := lm.checkCircularDependency(componentID, dependencies); err != nil {
 		return fmt.Errorf("circular dependency detected: %w", err)
@@ -91,10 +92,10 @@ func (lm *LifecycleManager) AddComponent(component LifecycleComponent, dependenc
 	lm.components = append(lm.components, component)
 	lm.dependencies[componentID] = dependencies
 
-    if err := lm.calculateStartOrder(); err != nil {
-        return fmt.Errorf("failed to calculate start order: %w", err)
-    }
-    return nil
+	if err := lm.calculateStartOrder(); err != nil {
+		return fmt.Errorf("failed to calculate start order: %w", err)
+	}
+	return nil
 }
 
 func (lm *LifecycleManager) getComponentID(component LifecycleComponent) string {
