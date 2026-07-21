@@ -49,6 +49,8 @@ outbound/                # EnvelopeBuilder + IdAllocator
 session/                 # FleetSession（connection → per-AGV 订阅）
 extend/                  # ExtensionRegistry（开放钩子；见 extend/README.md）
 bus/                     # Memory EventBus
+facts/                   # 连续 State 的协议 Fact 投影（无调度语义）
+testkit/                 # FakeBroker / Recording（见 testkit/README.md）
 mqtt/                    # 字节级 MQTT transport（不懂 VDA）
 gerrors/                 # glitch 生成，勿手改
 errors/*.yaml            # 错误码源
