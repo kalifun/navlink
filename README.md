@@ -45,6 +45,8 @@ go run ./examples/subscribe-state
 navlink/                 # Client 公共 API
 topic/                   # TopicResolver（唯一主题真相源）
 outbound/                # EnvelopeBuilder + IdAllocator
+session/                 # FleetSession（connection → per-AGV 订阅）
+extend/                  # ExtensionRegistry（厂商字段 → Meta）
 mqtt/                    # 字节级 MQTT transport（不懂 VDA）
 gerrors/                 # glitch 生成，勿手改
 errors/*.yaml            # 错误码源

@@ -22,9 +22,10 @@ func (t *failTransport) Subscribe(ctx context.Context, filter string, handler na
 
 // memoryTransport is an in-process Transport for unit tests.
 type memoryTransport struct {
-	mu      sync.Mutex
-	running bool
-	subs    []memSub
+	mu        sync.Mutex
+	running   bool
+	nextID    int
+	subs      map[int]memSub
 	published []pub
 }
 
@@ -42,6 +43,9 @@ func (t *memoryTransport) Start(ctx context.Context) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.running = true
+	if t.subs == nil {
+		t.subs = make(map[int]memSub)
+	}
 	return nil
 }
 
@@ -49,14 +53,17 @@ func (t *memoryTransport) Stop(ctx context.Context) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.running = false
-	t.subs = nil
+	t.subs = make(map[int]memSub)
 	return nil
 }
 
 func (t *memoryTransport) Publish(ctx context.Context, topic string, payload []byte, opts navlink.PublishOptions) error {
 	t.mu.Lock()
 	t.published = append(t.published, pub{topic: topic, payload: append([]byte(nil), payload...)})
-	subs := append([]memSub(nil), t.subs...)
+	subs := make([]memSub, 0, len(t.subs))
+	for _, s := range t.subs {
+		subs = append(subs, s)
+	}
 	t.mu.Unlock()
 
 	for _, s := range subs {
@@ -72,8 +79,39 @@ func (t *memoryTransport) Publish(ctx context.Context, topic string, payload []b
 func (t *memoryTransport) Subscribe(ctx context.Context, filter string, handler navlink.RawHandler) (navlink.Unsubscribe, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	t.subs = append(t.subs, memSub{filter: filter, handler: handler})
-	return func(ctx context.Context) error { return nil }, nil
+	if t.subs == nil {
+		t.subs = make(map[int]memSub)
+	}
+	t.nextID++
+	id := t.nextID
+	t.subs[id] = memSub{filter: filter, handler: handler}
+	return func(ctx context.Context) error {
+		t.mu.Lock()
+		defer t.mu.Unlock()
+		delete(t.subs, id)
+		return nil
+	}, nil
+}
+
+func (t *memoryTransport) filters() []string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	out := make([]string, 0, len(t.subs))
+	for _, s := range t.subs {
+		out = append(out, s.filter)
+	}
+	return out
+}
+
+func (t *memoryTransport) hasFilter(filter string) bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for _, s := range t.subs {
+		if s.filter == filter {
+			return true
+		}
+	}
+	return false
 }
 
 func topicMatch(filter, topic string) bool {

@@ -12,6 +12,7 @@ import (
 	"github.com/kalifun/vda5050-types-go/visualization"
 
 	"github.com/kalifun/navlink/gerrors"
+	"github.com/kalifun/navlink/session"
 	"github.com/kalifun/navlink/topic"
 )
 
@@ -35,6 +36,14 @@ func (c *Client) onRawMessage(ctx context.Context, rawTopic string, payload []by
 	}
 	if c.cfg.IdentityMapper != nil {
 		env.RobotID = c.cfg.IdentityMapper(parsed.Manufacturer, parsed.SerialNumber)
+	}
+	if c.extensions != nil {
+		meta, err := c.extensions.Apply(string(parsed.Channel), payload)
+		if err != nil {
+			c.reportDecode(env, gerrors.NewDecodeFailedWithArgs(err.Error()))
+			return nil
+		}
+		env.Meta = Meta(meta)
 	}
 
 	header, herr := extractHeader(payload)
@@ -135,6 +144,11 @@ func (c *Client) invokeState(ctx context.Context, env Envelope, msg *state.State
 }
 
 func (c *Client) invokeConnection(ctx context.Context, env Envelope, msg *connection.Connection) error {
+	if c.fleet != nil {
+		if err := c.fleet.HandleConnection(ctx, sessionAGV(env.AGV), msg.ConnectionState); err != nil {
+			return err
+		}
+	}
 	c.mu.RLock()
 	handlers := append([]ConnectionHandler(nil), c.connHandlers...)
 	c.mu.RUnlock()
@@ -144,6 +158,10 @@ func (c *Client) invokeConnection(ctx context.Context, env Envelope, msg *connec
 		}
 	}
 	return nil
+}
+
+func sessionAGV(id Identity) session.AGV {
+	return session.AGV{Manufacturer: id.Manufacturer, SerialNumber: id.SerialNumber}
 }
 
 func (c *Client) invokeVisualization(ctx context.Context, env Envelope, msg *visualization.Visualization) error {

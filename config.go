@@ -4,8 +4,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kalifun/navlink/extend"
 	"github.com/kalifun/navlink/gerrors"
 	"github.com/kalifun/navlink/outbound"
+	"github.com/kalifun/navlink/session"
 )
 
 // Config configures a navlink Client.
@@ -50,6 +52,14 @@ type Config struct {
 	HeaderIDs      outbound.HeaderIdProvider
 	OrderUpdateIDs outbound.OrderUpdateIdStore
 	ActionIDs      outbound.ActionIdAllocator
+
+	// Fleet enables FleetSession when non-nil.
+	// Pass &session.DefaultOptions() or a customized session.Options.
+	// An all-zero Options value is treated as DefaultOptions().
+	Fleet *session.Options
+
+	// Extensions fills Envelope.Meta from vendor fields (optional).
+	Extensions *extend.Registry
 
 	// IdentityMapper optionally fills Envelope.RobotID.
 	IdentityMapper IdentityMapper
