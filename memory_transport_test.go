@@ -2,11 +2,23 @@ package navlink_test
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"sync"
 
 	"github.com/kalifun/navlink"
 )
+
+type failTransport struct{}
+
+func (t *failTransport) Start(ctx context.Context) error { return nil }
+func (t *failTransport) Stop(ctx context.Context) error  { return nil }
+func (t *failTransport) Publish(ctx context.Context, topic string, payload []byte, opts navlink.PublishOptions) error {
+	return errors.New("publish failed")
+}
+func (t *failTransport) Subscribe(ctx context.Context, filter string, handler navlink.RawHandler) (navlink.Unsubscribe, error) {
+	return func(ctx context.Context) error { return nil }, nil
+}
 
 // memoryTransport is an in-process Transport for unit tests.
 type memoryTransport struct {

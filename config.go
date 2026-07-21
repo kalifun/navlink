@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/kalifun/navlink/gerrors"
+	"github.com/kalifun/navlink/outbound"
 )
 
 // Config configures a navlink Client.
@@ -24,6 +25,10 @@ type Config struct {
 	// Version is the VDA topic version segment (e.g. v2 / v2.0.0). Required.
 	Version string
 
+	// HeaderVersion is written into outbound ProtocolHeader.Version for Order and
+	// InstantActions. Empty means Version is used (same Client policy for both).
+	HeaderVersion string
+
 	// Manufacturer / SerialNumber optionally pin subscriptions to one AGV.
 	// Empty means fleet-level `+` wildcards for channels with handlers.
 	Manufacturer string
@@ -41,11 +46,23 @@ type Config struct {
 	// When nil, an MQTT transport is created from Broker settings.
 	Transport Transport
 
+	// Optional outbound ID allocators (process-local or platform-provided).
+	HeaderIDs      outbound.HeaderIdProvider
+	OrderUpdateIDs outbound.OrderUpdateIdStore
+	ActionIDs      outbound.ActionIdAllocator
+
 	// IdentityMapper optionally fills Envelope.RobotID.
 	IdentityMapper IdentityMapper
 
 	// OnDecodeError is called when decode or identity checks fail.
 	OnDecodeError DecodeErrorHandler
+}
+
+func (c Config) headerVersion() string {
+	if strings.TrimSpace(c.HeaderVersion) != "" {
+		return c.HeaderVersion
+	}
+	return c.Version
 }
 
 func (c Config) strictIdentity() bool {

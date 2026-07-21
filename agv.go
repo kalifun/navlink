@@ -3,9 +3,7 @@ package navlink
 import (
 	"context"
 	"encoding/json"
-	"time"
 
-	vda5050 "github.com/kalifun/vda5050-types-go"
 	"github.com/kalifun/vda5050-types-go/instant_actions"
 	"github.com/kalifun/vda5050-types-go/order"
 
@@ -19,7 +17,7 @@ type AGVHandle struct {
 	serial       string
 }
 
-// PublishOrder publishes an order after filling topic and basic header fields.
+// PublishOrder publishes an order after EnvelopeBuilder fills header / IDs.
 func (a *AGVHandle) PublishOrder(ctx context.Context, o *order.Order) error {
 	if err := a.client.requireStarted(); err != nil {
 		return err
@@ -27,16 +25,24 @@ func (a *AGVHandle) PublishOrder(ctx context.Context, o *order.Order) error {
 	if o == nil {
 		return nil
 	}
-	a.fillHeader(&o.ProtocolHeader)
+
+	commitID, err := a.client.builder.PrepareOrder(o, a.manufacturer, a.serial)
+	if err != nil {
+		return err
+	}
+
 	payload, err := json.Marshal(o)
 	if err != nil {
 		return err
 	}
 	t := a.client.topics.Build(a.manufacturer, a.serial, topic.ChannelOrder)
-	return a.client.transport.Publish(ctx, t, payload, PublishOptions{QoS: a.client.cfg.qos()})
+	if err := a.client.transport.Publish(ctx, t, payload, PublishOptions{QoS: a.client.cfg.qos()}); err != nil {
+		return err
+	}
+	return a.client.builder.CommitOrderUpdate(o.OrderId, commitID)
 }
 
-// PublishInstantActions publishes instantActions after filling topic and basic header fields.
+// PublishInstantActions publishes instantActions after EnvelopeBuilder fills header fields.
 func (a *AGVHandle) PublishInstantActions(ctx context.Context, ia *instant_actions.InstantActions) error {
 	if err := a.client.requireStarted(); err != nil {
 		return err
@@ -44,7 +50,9 @@ func (a *AGVHandle) PublishInstantActions(ctx context.Context, ia *instant_actio
 	if ia == nil {
 		return nil
 	}
-	a.fillHeader(&ia.ProtocolHeader)
+	if err := a.client.builder.PrepareInstantActions(ia, a.manufacturer, a.serial); err != nil {
+		return err
+	}
 	payload, err := json.Marshal(ia)
 	if err != nil {
 		return err
@@ -53,17 +61,15 @@ func (a *AGVHandle) PublishInstantActions(ctx context.Context, ia *instant_actio
 	return a.client.transport.Publish(ctx, t, payload, PublishOptions{QoS: a.client.cfg.qos()})
 }
 
-func (a *AGVHandle) fillHeader(h *vda5050.ProtocolHeader) {
-	if h.Manufacturer == "" {
-		h.Manufacturer = a.manufacturer
+// NextActionID allocates a monotonic actionId for this AGV when ActionIDs is configured.
+func (a *AGVHandle) NextActionID() (string, error) {
+	return a.client.builder.NextActionID(a.manufacturer, a.serial)
+}
+
+// SyncOrderUpdateFromVehicle observes a vehicle-reported orderUpdateId without rewinding.
+func (a *AGVHandle) SyncOrderUpdateFromVehicle(orderID string, observed uint32) {
+	if a.client.cfg.OrderUpdateIDs == nil {
+		return
 	}
-	if h.SerialNumber == "" {
-		h.SerialNumber = a.serial
-	}
-	if h.Version == "" {
-		h.Version = a.client.cfg.Version
-	}
-	if h.Timestamp == "" {
-		h.Timestamp = time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
-	}
+	a.client.cfg.OrderUpdateIDs.SyncFromVehicle(orderID, observed)
 }

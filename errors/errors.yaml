@@ -44,6 +44,15 @@ error:
       cn: "身份不一致: topic 与报文 header 不匹配"
       en: "Identity mismatch between topic and payload header"
 
+  - key: IdAllocationFailed
+    code: IdAllocationFailed
+    category: system
+    severity: error
+    description: failed to allocate outbound protocol id
+    message:
+      cn: "ID 分配失败: %s"
+      en: "ID allocation failed: %s"
+
   - key: MQTTTransportNotRunning
     code: TransportNotRunning
     category: system

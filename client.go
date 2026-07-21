@@ -8,6 +8,7 @@ import (
 
 	"github.com/kalifun/navlink/gerrors"
 	"github.com/kalifun/navlink/mqtt"
+	"github.com/kalifun/navlink/outbound"
 	"github.com/kalifun/navlink/topic"
 )
 
@@ -16,6 +17,7 @@ type Client struct {
 	cfg       Config
 	transport Transport
 	topics    topic.Resolver
+	builder   *outbound.Builder
 
 	mu      sync.RWMutex
 	started bool
@@ -45,6 +47,7 @@ func New(cfg Config) (*Client, error) {
 			Interface: cfg.Interface,
 			Version:   cfg.Version,
 		},
+		builder: outbound.NewBuilder(cfg.headerVersion(), cfg.HeaderIDs, cfg.OrderUpdateIDs, cfg.ActionIDs),
 	}
 
 	if cfg.Transport != nil {

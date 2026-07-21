@@ -63,6 +63,18 @@ var identityMismatchErr = gerr.ErrWrapper{
 	Description: "topic identity does not match payload header",
 }
 
+var idAllocationFailedErr = gerr.ErrWrapper{
+	Key:      "IdAllocationFailed",
+	Code:     "IdAllocationFailed",
+	Category: "system",
+	Severity: gerr.SeverityError,
+	Messages: map[string]string{
+		"en": "ID allocation failed: %s",
+		"cn": "ID 分配失败: %s",
+	},
+	Description: "failed to allocate outbound protocol id",
+}
+
 var mQTTTransportNotRunningErr = gerr.ErrWrapper{
 	Key:      "MQTTTransportNotRunning",
 	Code:     "TransportNotRunning",
@@ -93,8 +105,8 @@ var connectionFailedErr = gerr.ErrWrapper{
 	Category: "network",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"cn": "连接MQTT代理失败",
 		"en": "Failed to connect to MQTT broker",
+		"cn": "连接MQTT代理失败",
 	},
 	Description: "failed to connect to mqtt broker",
 }
@@ -105,8 +117,8 @@ var authenticationFailedErr = gerr.ErrWrapper{
 	Category: "security",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"cn": "MQTT认证失败",
 		"en": "MQTT authentication failed",
+		"cn": "MQTT认证失败",
 	},
 	Description: "mqtt authentication failed",
 }
@@ -117,8 +129,8 @@ var subscriptionFailedErr = gerr.ErrWrapper{
 	Category: "network",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"cn": "订阅主题失败",
 		"en": "Failed to subscribe to topic",
+		"cn": "订阅主题失败",
 	},
 	Description: "failed to subscribe to topic",
 }
@@ -153,8 +165,8 @@ var clientNotConnectedErr = gerr.ErrWrapper{
 	Category: "network",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"cn": "MQTT客户端未连接",
 		"en": "MQTT client is not connected",
+		"cn": "MQTT客户端未连接",
 	},
 	Description: "mqtt client is not connected",
 }
@@ -165,8 +177,8 @@ var reconnectFailedErr = gerr.ErrWrapper{
 	Category: "network",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"en": "Failed to reconnect to broker",
 		"cn": "重新连接代理失败",
+		"en": "Failed to reconnect to broker",
 	},
 	Description: "failed to reconnect to broker",
 }
@@ -201,8 +213,8 @@ var qosNotSupportedErr = gerr.ErrWrapper{
 	Category: "validation",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"cn": "不支持的QoS级别",
 		"en": "Requested QoS level not supported",
+		"cn": "不支持的QoS级别",
 	},
 	Description: "requested qos level not supported",
 }
@@ -213,8 +225,8 @@ var messageTooLargeErr = gerr.ErrWrapper{
 	Category: "validation",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"en": "Message size exceeds limit",
 		"cn": "消息大小超过限制",
+		"en": "Message size exceeds limit",
 	},
 	Description: "message size exceeds limit",
 }
@@ -237,8 +249,8 @@ var protocolErrorErr = gerr.ErrWrapper{
 	Category: "protocol",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"cn": "MQTT协议错误",
 		"en": "MQTT protocol error",
+		"cn": "MQTT协议错误",
 	},
 	Description: "mqtt protocol error",
 }
@@ -249,8 +261,8 @@ var timeoutErrorErr = gerr.ErrWrapper{
 	Category: "network",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"cn": "操作超时",
 		"en": "Operation timed out",
+		"cn": "操作超时",
 	},
 	Description: "operation timed out",
 }
@@ -309,8 +321,8 @@ var subscriptionNotActiveErr = gerr.ErrWrapper{
 	Category: "network",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"cn": "主题 %s 的订阅未激活",
 		"en": "Subscription to topic %s is not active",
+		"cn": "主题 %s 的订阅未激活",
 	},
 	Description: "subscription to topic is not active",
 }
@@ -321,8 +333,8 @@ var unsubscribeFailedErr = gerr.ErrWrapper{
 	Category: "network",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"cn": "取消订阅主题 %s 失败: %v",
 		"en": "Failed to unsubscribe from topic %s: %v",
+		"cn": "取消订阅主题 %s 失败: %v",
 	},
 	Description: "failed to unsubscribe from topic",
 }
@@ -341,6 +353,9 @@ var DecodeFailed = gerr.NewError(decodeFailedErr)
 
 // IdentityMismatch represents topic identity does not match payload header
 var IdentityMismatch = gerr.NewError(identityMismatchErr)
+
+// IdAllocationFailed represents failed to allocate outbound protocol id
+var IdAllocationFailed = gerr.NewError(idAllocationFailedErr)
 
 // MQTTTransportNotRunning represents mqtt transport not running
 var MQTTTransportNotRunning = gerr.NewError(mQTTTransportNotRunningErr)
@@ -422,6 +437,9 @@ func init() {
 		panic(err)
 	}
 	if err := gerr.Register(identityMismatchErr); err != nil {
+		panic(err)
+	}
+	if err := gerr.Register(idAllocationFailedErr); err != nil {
 		panic(err)
 	}
 	if err := gerr.Register(mQTTTransportNotRunningErr); err != nil {
@@ -533,6 +551,20 @@ func NewDecodeFailedWithMetadata(key string, value interface{}) *gerr.Error {
 // NewIdentityMismatchWithMetadata creates a IdentityMismatch error with metadata
 func NewIdentityMismatchWithMetadata(key string, value interface{}) *gerr.Error {
 	return IdentityMismatch.With(key, value)
+}
+
+// IdAllocationFailedF indicates this error requires format arguments
+// Usage: IdAllocationFailedF.Args("ErrMessage")
+var IdAllocationFailedF = IdAllocationFailed
+
+// NewIdAllocationFailedWithArgs creates a IdAllocationFailed error with arguments
+func NewIdAllocationFailedWithArgs(args ...interface{}) *gerr.Error {
+	return IdAllocationFailed.Args(args...)
+}
+
+// NewIdAllocationFailedWithMetadata creates a IdAllocationFailed error with metadata
+func NewIdAllocationFailedWithMetadata(key string, value interface{}) *gerr.Error {
+	return IdAllocationFailed.With(key, value)
 }
 
 // NewMQTTTransportNotRunningWithMetadata creates a MQTTTransportNotRunning error with metadata
