@@ -37,6 +37,7 @@ defer client.Stop(ctx)
 
 ```bash
 go run ./examples/subscribe-state
+go run ./examples/platform-wiring   # 集中注册 L1 + 平台自定义事件
 ```
 
 ## 布局
@@ -47,10 +48,12 @@ topic/                   # TopicResolver（唯一主题真相源）
 outbound/                # EnvelopeBuilder + IdAllocator
 session/                 # FleetSession（connection → per-AGV 订阅）
 extend/                  # ExtensionRegistry（开放钩子；见 extend/README.md）
+bus/                     # Memory EventBus
 mqtt/                    # 字节级 MQTT transport（不懂 VDA）
 gerrors/                 # glitch 生成，勿手改
 errors/*.yaml            # 错误码源
 examples/subscribe-state
+examples/platform-wiring
 ```
 
 ## 开发
