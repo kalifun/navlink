@@ -9,7 +9,6 @@ import (
 	"github.com/kalifun/vda5050-types-go/state"
 
 	"github.com/kalifun/navlink"
-	"github.com/kalifun/navlink/outbound"
 	"github.com/kalifun/navlink/topic"
 )
 
@@ -123,6 +122,7 @@ func TestPublishOrderBuildsTopic(t *testing.T) {
 		Nodes:         []order.Node{},
 		Edges:         []order.Edge{},
 	}
+	ord.HeaderId = 42
 	if err := client.AGV("RobotCorp", "AGV001").PublishOrder(ctx, ord); err != nil {
 		t.Fatal(err)
 	}
@@ -133,85 +133,8 @@ func TestPublishOrderBuildsTopic(t *testing.T) {
 	if mem.published[0].topic != want {
 		t.Fatalf("topic=%q want %q", mem.published[0].topic, want)
 	}
-}
-
-func TestPublishOrderAllocatesAndCommitsUpdateID(t *testing.T) {
-	mem := &memoryTransport{}
-	store := outbound.NewMemoryOrderUpdateIDs()
-	headers := outbound.NewMemoryHeaderIDs()
-	client, err := navlink.New(navlink.Config{
-		Interface:      "uagv",
-		Version:        "v2",
-		Transport:      mem,
-		HeaderIDs:      headers,
-		OrderUpdateIDs: store,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx := context.Background()
-	if err := client.Start(ctx); err != nil {
-		t.Fatal(err)
-	}
-	defer client.Stop(ctx)
-
-	ord := &order.Order{OrderId: "o-1", Nodes: []order.Node{}, Edges: []order.Edge{}}
-	if err := client.AGV("M", "S").PublishOrder(ctx, ord); err != nil {
-		t.Fatal(err)
-	}
-	if ord.OrderUpdateId != 1 || ord.HeaderId != 1 || ord.Version != "v2" {
-		t.Fatalf("order update=%d header=%d version=%q", ord.OrderUpdateId, ord.HeaderId, ord.Version)
-	}
-	if store.LastCommitted("o-1") != 1 {
-		t.Fatalf("committed=%d", store.LastCommitted("o-1"))
-	}
-}
-
-func TestPublishOrderDoesNotCommitOnTransportFailure(t *testing.T) {
-	fail := &failTransport{}
-	store := outbound.NewMemoryOrderUpdateIDs()
-	client, err := navlink.New(navlink.Config{
-		Interface:      "uagv",
-		Version:        "v2",
-		Transport:      fail,
-		OrderUpdateIDs: store,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx := context.Background()
-	if err := client.Start(ctx); err != nil {
-		t.Fatal(err)
-	}
-	defer client.Stop(ctx)
-
-	ord := &order.Order{OrderId: "o-1", Nodes: []order.Node{}, Edges: []order.Edge{}}
-	if err := client.AGV("M", "S").PublishOrder(ctx, ord); err == nil {
-		t.Fatal("expected publish error")
-	}
-	if store.LastCommitted("o-1") != 0 {
-		t.Fatalf("must not commit on failure, committed=%d", store.LastCommitted("o-1"))
-	}
-	// Retry with working transport should reuse pending update id 1.
-	mem := &memoryTransport{}
-	client2, err := navlink.New(navlink.Config{
-		Interface:      "uagv",
-		Version:        "v2",
-		Transport:      mem,
-		OrderUpdateIDs: store,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := client2.Start(ctx); err != nil {
-		t.Fatal(err)
-	}
-	defer client2.Stop(ctx)
-	ord2 := &order.Order{OrderId: "o-1", Nodes: []order.Node{}, Edges: []order.Edge{}}
-	if err := client2.AGV("M", "S").PublishOrder(ctx, ord2); err != nil {
-		t.Fatal(err)
-	}
-	if ord2.OrderUpdateId != 1 {
-		t.Fatalf("expected pending id 1, got %d", ord2.OrderUpdateId)
+	if ord.HeaderId != 42 || ord.OrderUpdateId != 1 || ord.Version != "v2" {
+		t.Fatalf("caller IDs/version mutated: header=%d update=%d version=%q",
+			ord.HeaderId, ord.OrderUpdateId, ord.Version)
 	}
 }

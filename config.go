@@ -6,7 +6,6 @@ import (
 
 	"github.com/kalifun/navlink/extend"
 	"github.com/kalifun/navlink/gerrors"
-	"github.com/kalifun/navlink/outbound"
 	"github.com/kalifun/navlink/session"
 )
 
@@ -52,11 +51,6 @@ type Config struct {
 	// Transport injects a custom transport (tests / shared connection).
 	// When nil, an MQTT transport is created from Broker settings.
 	Transport Transport
-
-	// Optional outbound ID allocators (process-local or platform-provided).
-	HeaderIDs      outbound.HeaderIdProvider
-	OrderUpdateIDs outbound.OrderUpdateIdStore
-	ActionIDs      outbound.ActionIdAllocator
 
 	// Fleet enables FleetSession when non-nil.
 	// Pass &session.DefaultOptions() or a customized session.Options.

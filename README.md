@@ -45,7 +45,7 @@ go run ./examples/platform-wiring   # 集中注册 L1 + 平台自定义事件
 ```text
 navlink/                 # Client 公共 API
 topic/                   # TopicResolver（唯一主题真相源）
-outbound/                # EnvelopeBuilder + IdAllocator
+outbound/                # 出站执行辅助（version/timestamp；ID 由调度填写）
 session/                 # FleetSession（connection → per-AGV 订阅）
 extend/                  # ExtensionRegistry（开放钩子；见 extend/README.md）
 bus/                     # Memory EventBus
@@ -67,14 +67,15 @@ make check   # generr + fmt + vet + test
 
 ## 非目标
 
-navlink **不做**也不逐渐滑向：
+navlink 是协议 **执行端**，**不做**也不逐渐滑向：
 
+- `headerId` / `orderUpdateId` / `actionId` 分配与水位（属调度编排）
 - 选车、任务分解、RHCR、交管、充电、completion / grant 等业务判定
 - 跨进程中台、默认 Redis EventBus、多租户协议网关
 - 大而全 Processor / 插件微内核
 - 用库代码强制消费方架构
 - 领域事件（如 `EpisodeOpened`）——平台用 `Emit` 自行挂载
 
-VDA 收发走 `Client` / `AGV`；非 VDA 的 application MQTT 用 `Client.Transport()`，不要混成一个上帝对象。
+VDA 收发走 `Client` / `AGV`；非 VDA 的 application MQTT 用 `Client.Transport()`。
 
-详见 [CHANGELOG.md](CHANGELOG.md)。
+详见 [CHANGELOG.md](CHANGELOG.md) 与 [outbound/README.md](outbound/README.md)。

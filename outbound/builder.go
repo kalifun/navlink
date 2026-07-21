@@ -6,34 +6,26 @@ import (
 	vda5050 "github.com/kalifun/vda5050-types-go"
 	"github.com/kalifun/vda5050-types-go/instant_actions"
 	"github.com/kalifun/vda5050-types-go/order"
-
-	"github.com/kalifun/navlink/gerrors"
 )
 
 // TimestampLayout is RFC3339 with millisecond precision in UTC (Zulu).
-// Aligned with common platform vda5050_timestamp formatting.
 const TimestampLayout = "2006-01-02T15:04:05.000Z"
 
-// Builder fills outbound VDA5050 headers consistently for one Client.
+// Builder applies wire-format defaults for outbound VDA5050 messages.
+//
+// navlink is an execution endpoint: headerId / orderUpdateId / actionId are
+// owned by the caller (dispatcher). This builder only fills identity blanks,
+// ProtocolHeader.Version, and timestamp.
 type Builder struct {
-	// Version is written into ProtocolHeader.Version for Order and InstantActions.
 	Version string
-
-	HeaderIDs    HeaderIdProvider
-	OrderUpdates OrderUpdateIdStore
-	ActionIDs    ActionIdAllocator
-
-	now func() time.Time
+	now     func() time.Time
 }
 
-// NewBuilder constructs a Builder. now may be nil (defaults to time.Now UTC).
-func NewBuilder(version string, headerIDs HeaderIdProvider, orderUpdates OrderUpdateIdStore, actionIDs ActionIdAllocator) *Builder {
+// NewBuilder constructs a Builder. Version is written into every outbound header.
+func NewBuilder(version string) *Builder {
 	return &Builder{
-		Version:      version,
-		HeaderIDs:    headerIDs,
-		OrderUpdates: orderUpdates,
-		ActionIDs:    actionIDs,
-		now:          func() time.Time { return time.Now().UTC() },
+		Version: version,
+		now:     func() time.Time { return time.Now().UTC() },
 	}
 }
 
@@ -44,10 +36,11 @@ func (b *Builder) SetClock(now func() time.Time) {
 	}
 }
 
-// ApplyHeader sets manufacturer/serial/version/timestamp and optionally headerId.
-func (b *Builder) ApplyHeader(h *vda5050.ProtocolHeader, manufacturer, serial string) error {
+// ApplyHeader sets manufacturer/serial when empty, and always sets version + timestamp.
+// HeaderId is never allocated here.
+func (b *Builder) ApplyHeader(h *vda5050.ProtocolHeader, manufacturer, serial string) {
 	if h == nil {
-		return gerrors.NewIdAllocationFailedWithArgs("nil protocol header")
+		return
 	}
 	if h.Manufacturer == "" {
 		h.Manufacturer = manufacturer
@@ -55,69 +48,22 @@ func (b *Builder) ApplyHeader(h *vda5050.ProtocolHeader, manufacturer, serial st
 	if h.SerialNumber == "" {
 		h.SerialNumber = serial
 	}
-	// Same Client policy for all outbound message types.
 	h.Version = b.Version
 	h.Timestamp = b.now().Format(TimestampLayout)
-
-	if b.HeaderIDs != nil {
-		id, err := b.HeaderIDs.Next()
-		if err != nil {
-			return gerrors.NewIdAllocationFailedWithArgs(err.Error())
-		}
-		h.HeaderId = id
-	}
-	return nil
 }
 
-// PrepareOrder applies header fields and allocates orderUpdateId when the store
-// is configured and the caller left OrderUpdateId at zero.
-// Returns the update id that must be Commit'ed after a successful publish
-// (zero when the store was not used for this call).
-func (b *Builder) PrepareOrder(o *order.Order, manufacturer, serial string) (commitUpdateID uint32, err error) {
+// PrepareOrder applies wire defaults. Caller must set OrderId / OrderUpdateId / HeaderId.
+func (b *Builder) PrepareOrder(o *order.Order, manufacturer, serial string) {
 	if o == nil {
-		return 0, nil
+		return
 	}
-	if err := b.ApplyHeader(&o.ProtocolHeader, manufacturer, serial); err != nil {
-		return 0, err
-	}
-	if b.OrderUpdates == nil || o.OrderUpdateId != 0 {
-		return 0, nil
-	}
-	id, err := b.OrderUpdates.GetNext(o.OrderId)
-	if err != nil {
-		return 0, gerrors.NewIdAllocationFailedWithArgs(err.Error())
-	}
-	o.OrderUpdateId = id
-	return id, nil
+	b.ApplyHeader(&o.ProtocolHeader, manufacturer, serial)
 }
 
-// CommitOrderUpdate commits a previously prepared orderUpdateId.
-func (b *Builder) CommitOrderUpdate(orderID string, id uint32) error {
-	if b.OrderUpdates == nil || id == 0 {
-		return nil
-	}
-	if err := b.OrderUpdates.Commit(orderID, id); err != nil {
-		return gerrors.NewIdAllocationFailedWithArgs(err.Error())
-	}
-	return nil
-}
-
-// PrepareInstantActions applies header fields shared with Order.
-func (b *Builder) PrepareInstantActions(ia *instant_actions.InstantActions, manufacturer, serial string) error {
+// PrepareInstantActions applies wire defaults. Caller must set HeaderId and actionIds.
+func (b *Builder) PrepareInstantActions(ia *instant_actions.InstantActions, manufacturer, serial string) {
 	if ia == nil {
-		return nil
+		return
 	}
-	return b.ApplyHeader(&ia.ProtocolHeader, manufacturer, serial)
-}
-
-// NextActionID allocates an actionId when ActionIDs is configured.
-func (b *Builder) NextActionID(manufacturer, serial string) (string, error) {
-	if b.ActionIDs == nil {
-		return "", gerrors.NewIdAllocationFailedWithArgs("ActionIDs allocator is not configured")
-	}
-	id, err := b.ActionIDs.Next(manufacturer, serial)
-	if err != nil {
-		return "", gerrors.NewIdAllocationFailedWithArgs(err.Error())
-	}
-	return id, nil
+	b.ApplyHeader(&ia.ProtocolHeader, manufacturer, serial)
 }

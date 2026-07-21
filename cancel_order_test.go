@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/kalifun/navlink"
-	"github.com/kalifun/navlink/outbound"
 	"github.com/kalifun/navlink/testkit"
 )
 
@@ -16,8 +15,6 @@ func TestCancelOrderPublishesInstantAction(t *testing.T) {
 		Interface: "uagv",
 		Version:   "v2",
 		Transport: broker,
-		ActionIDs: outbound.NewMemoryActionIDs(),
-		HeaderIDs: outbound.NewMemoryHeaderIDs(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -28,7 +25,7 @@ func TestCancelOrderPublishesInstantAction(t *testing.T) {
 	}
 	defer client.Stop(ctx)
 
-	if err := client.AGV("M", "S1").CancelOrder(ctx); err != nil {
+	if err := client.AGV("M", "S1").CancelOrder(ctx, 7, "act-1"); err != nil {
 		t.Fatal(err)
 	}
 	pubs := broker.Published()
@@ -39,12 +36,15 @@ func TestCancelOrderPublishesInstantAction(t *testing.T) {
 	if err := json.Unmarshal(pubs[0].Payload, &body); err != nil {
 		t.Fatal(err)
 	}
+	if uint32(body["headerId"].(float64)) != 7 {
+		t.Fatalf("headerId=%v", body["headerId"])
+	}
 	actions, _ := body["actions"].([]any)
 	if len(actions) != 1 {
 		t.Fatalf("actions=%v", body["actions"])
 	}
 	a0 := actions[0].(map[string]any)
-	if a0["actionType"] != "cancelOrder" {
+	if a0["actionType"] != "cancelOrder" || a0["actionId"] != "act-1" {
 		t.Fatalf("action=%v", a0)
 	}
 }

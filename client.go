@@ -57,7 +57,7 @@ func New(cfg Config) (*Client, error) {
 			Interface: cfg.Interface,
 			Version:   cfg.Version,
 		},
-		builder:    outbound.NewBuilder(cfg.headerVersion(), cfg.HeaderIDs, cfg.OrderUpdateIDs, cfg.ActionIDs),
+		builder:    outbound.NewBuilder(cfg.headerVersion()),
 		extensions: cfg.Extensions,
 		bus:        cfg.Bus,
 	}
