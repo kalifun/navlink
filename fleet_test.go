@@ -9,7 +9,6 @@ import (
 
 	"github.com/kalifun/navlink"
 	"github.com/kalifun/navlink/extend"
-	"github.com/kalifun/navlink/extend/kc"
 	"github.com/kalifun/navlink/session"
 )
 
@@ -82,7 +81,22 @@ func TestFleetSessionTracksOnConnectionOnline(t *testing.T) {
 func TestExtensionMetaOnState(t *testing.T) {
 	mem := &memoryTransport{}
 	reg := extend.NewRegistry()
-	reg.Register(kc.CurrentNodeID())
+	// Consumer-owned extractor (not a navlink built-in vendor module).
+	reg.Register(func(channel string, raw []byte) (extend.Meta, error) {
+		if channel != "state" {
+			return nil, nil
+		}
+		var probe struct {
+			Extra string `json:"extraField"`
+		}
+		if err := json.Unmarshal(raw, &probe); err != nil {
+			return nil, err
+		}
+		if probe.Extra == "" {
+			return nil, nil
+		}
+		return extend.Meta{"ExtraField": probe.Extra}, nil
+	})
 	client, err := navlink.New(navlink.Config{
 		Interface:  "uagv",
 		Version:    "v2",
@@ -95,7 +109,7 @@ func TestExtensionMetaOnState(t *testing.T) {
 
 	var reported any
 	client.OnState(func(ctx context.Context, env navlink.Envelope, st *state.State) error {
-		reported = env.Meta[kc.MetaReportedCurrentNodeID]
+		reported = env.Meta["ExtraField"]
 		return nil
 	})
 
@@ -109,8 +123,8 @@ func TestExtensionMetaOnState(t *testing.T) {
 		"headerId": 1, "timestamp": "2026-07-21T00:00:00.000Z", "version": "v2",
 		"manufacturer": "M", "serialNumber": "S1",
 		"orderId": "", "orderUpdateId": 0, "lastNodeId": "N1", "lastNodeSequenceId": 0,
-		"currentNodeId": "N42",
-		"nodeStates":    []any{}, "edgeStates": []any{}, "actionStates": []any{},
+		"extraField": "from-consumer",
+		"nodeStates": []any{}, "edgeStates": []any{}, "actionStates": []any{},
 		"batteryState":  map[string]any{"batteryCharge": 80.0, "charging": false},
 		"operatingMode": "AUTOMATIC", "errors": []any{},
 		"safetyState": map[string]any{"eStop": "NONE", "fieldViolation": false},
@@ -118,7 +132,7 @@ func TestExtensionMetaOnState(t *testing.T) {
 	if err := mem.Publish(ctx, "uagv/v2/M/S1/state", payload, navlink.PublishOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	if reported != "N42" {
+	if reported != "from-consumer" {
 		t.Fatalf("reported=%v", reported)
 	}
 }

@@ -46,7 +46,7 @@ navlink/                 # Client 公共 API
 topic/                   # TopicResolver（唯一主题真相源）
 outbound/                # EnvelopeBuilder + IdAllocator
 session/                 # FleetSession（connection → per-AGV 订阅）
-extend/                  # ExtensionRegistry（厂商字段 → Meta）
+extend/                  # ExtensionRegistry（开放钩子；抽取逻辑由消费方注册）
 mqtt/                    # 字节级 MQTT transport（不懂 VDA）
 gerrors/                 # glitch 生成，勿手改
 errors/*.yaml            # 错误码源

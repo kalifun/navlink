@@ -2,11 +2,15 @@ package extend
 
 import "fmt"
 
-// Meta is a bag of vendor extension fields attached to an inbound Envelope.
+// Meta is a bag of extension fields attached to an inbound Envelope.
+// Key naming and semantics are defined by the consumer, not by navlink.
 type Meta map[string]any
 
-// Extractor pulls extension fields from a raw payload for a VDA channel.
+// Extractor pulls consumer-defined fields from a raw payload for a VDA channel.
 // Returning a nil/empty Meta is not an error.
+//
+// Vendor / OEM extractors belong in the consuming project (dispatcher, sim,
+// tool). navlink only provides the registration hook.
 type Extractor func(channel string, raw []byte) (Meta, error)
 
 // Registry runs registered extractors and merges Meta maps.
