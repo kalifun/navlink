@@ -9,9 +9,14 @@
   `headerId` / `orderUpdateId` / `actionId` before publish. Builder only fills
   version, timestamp, and blank manufacturer/serial.
 - `CancelOrder(ctx, headerID, actionID)` now requires IDs from the orchestration layer.
+- `PublishOrder` / `PublishInstantActions` / `CancelOrder` return `(PublishResult, error)`.
 
 ### Added
 
+- **Execution visibility**: `PublishResult` (topic/payload/header summary) plus
+  `PublishAccepted` / `IsPublishNotStarted` / `IsPublishTimeout` /
+  `IsPublishCanceled` / `IsPublishQoSRejected` / `IsPublishBrokerRejected`.
+  MQTT token wait honors `ctx`. Nil order / instantActions returns InvalidConfig.
 - Client / TopicResolver / typed On* / Envelope / AGV outbound (v0.1)
 - FleetSession, ExtensionRegistry hook, Transport() layering (v0.3)
 - Memory EventBus, L1 events, `examples/platform-wiring` (v0.4)

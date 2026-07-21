@@ -84,8 +84,8 @@ func (t *Transport) Start(ctx context.Context) error {
 
 	t.client = pahomqtt.NewClient(opts)
 	token := t.client.Connect()
-	if !token.WaitTimeout(30 * time.Second) {
-		return gerrors.TimeoutError
+	if err := waitToken(ctx, token); err != nil {
+		return err
 	}
 	if err := token.Error(); err != nil {
 		return gerrors.ConnectionFailed.With("cause", err.Error())
@@ -132,11 +132,11 @@ func (t *Transport) Publish(ctx context.Context, topic string, payload []byte, q
 		qos = t.cfg.QoS
 	}
 	token := t.client.Publish(topic, qos, retain, payload)
-	if !token.WaitTimeout(30 * time.Second) {
-		return gerrors.TimeoutError
+	if err := waitToken(ctx, token); err != nil {
+		return err
 	}
 	if err := token.Error(); err != nil {
-		return gerrors.PublishFailed.With("cause", err.Error())
+		return gerrors.PublishFailed.With("cause", err.Error()).With("topic", topic)
 	}
 	return nil
 }
@@ -154,8 +154,8 @@ func (t *Transport) Subscribe(ctx context.Context, filter string, handler Handle
 		_ = handler(context.Background(), msg.Topic(), msg.Payload())
 	}
 	token := t.client.Subscribe(filter, t.cfg.QoS, cb)
-	if !token.WaitTimeout(30 * time.Second) {
-		return nil, gerrors.TimeoutError
+	if err := waitToken(ctx, token); err != nil {
+		return nil, err
 	}
 	if err := token.Error(); err != nil {
 		return nil, gerrors.SubscriptionFailed.With("cause", err.Error())
@@ -168,8 +168,8 @@ func (t *Transport) Subscribe(ctx context.Context, filter string, handler Handle
 			return nil
 		}
 		token := t.client.Unsubscribe(filter)
-		if !token.WaitTimeout(30 * time.Second) {
-			return gerrors.TimeoutError
+		if err := waitToken(ctx, token); err != nil {
+			return err
 		}
 		if err := token.Error(); err != nil {
 			return gerrors.NewUnsubscribeFailedWithArgs(filter, err)

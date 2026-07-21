@@ -25,8 +25,12 @@ func TestCancelOrderPublishesInstantAction(t *testing.T) {
 	}
 	defer client.Stop(ctx)
 
-	if err := client.AGV("M", "S1").CancelOrder(ctx, 7, "act-1"); err != nil {
+	res, err := client.AGV("M", "S1").CancelOrder(ctx, 7, "act-1")
+	if err != nil {
 		t.Fatal(err)
+	}
+	if res.HeaderID != 7 || len(res.ActionIDs) != 1 || res.ActionIDs[0] != "act-1" {
+		t.Fatalf("result=%+v", res)
 	}
 	pubs := broker.Published()
 	if len(pubs) != 1 || pubs[0].Topic != "uagv/v2/M/S1/instantActions" {

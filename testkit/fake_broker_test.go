@@ -72,7 +72,7 @@ func TestFakeBrokerRecordsPublishOrder(t *testing.T) {
 	defer client.Stop(ctx)
 
 	ord := &order.Order{OrderId: "o1", OrderUpdateId: 1, Nodes: []order.Node{}, Edges: []order.Edge{}}
-	if err := client.AGV("M", "S1").PublishOrder(ctx, ord); err != nil {
+	if _, err := client.AGV("M", "S1").PublishOrder(ctx, ord); err != nil {
 		t.Fatal(err)
 	}
 	pubs := broker.Published()

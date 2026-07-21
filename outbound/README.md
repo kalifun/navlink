@@ -12,5 +12,13 @@
 ```go
 ord.HeaderId = ...
 ord.OrderUpdateId = ...
-_ = client.AGV(mfr, sn).PublishOrder(ctx, ord)
+res, err := client.AGV(mfr, sn).PublishOrder(ctx, ord)
+if navlink.PublishAccepted(err) {
+    // platform RecordSuccessfulPublish — navlink does not
+    _ = res // topic / payload / header summary for reconciliation
+}
 ```
+
+成败语义见根目录 `publish.go`：`ClientNotStarted` / `QosNotSupported` /
+`TimeoutError` / `context.Canceled` / `PublishFailed` 可区分。
+仅 `err == nil` 表示 MQTT QoS 握手成功（broker 收下），不是车侧已接受 order。

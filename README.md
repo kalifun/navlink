@@ -65,11 +65,30 @@ make test
 make check   # generr + fmt + vet + test
 ```
 
+## 出站可见性（调度对接）
+
+```go
+res, err := client.AGV(mfr, sn).PublishOrder(ctx, ord)
+if navlink.PublishAccepted(err) {
+    // 仅表示 MQTT QoS 握手成功（broker 收下），不是「车已接受 order」
+    // 车侧仍靠 state 观察；此时平台可 RecordSuccessfulPublish
+    _ = res.Topic // res.Payload / HeaderID / OrderUpdateID …
+}
+// 失败可区分：IsPublishNotStarted / IsPublishTimeout / IsPublishCanceled /
+// IsPublishQoSRejected / IsPublishBrokerRejected；nil 入参直接 InvalidConfig
+```
+
+入站 `Config.IdentityMapper`：`(mfr, sn) → robotID`，写入 `Envelope.RobotID`。  
+厂商字段（如 KC `currentNodeId`）走 `Config.Extensions` → `Envelope.Meta`，见 [extend/README.md](extend/README.md)。
+
+**sim / dispatcher 共用同一 `Client` API**（FakeBroker 或真 MQTT），不要再维护第二套协议客户端。
+
 ## 非目标
 
 navlink 是协议 **执行端**，**不做**也不逐渐滑向：
 
 - `headerId` / `orderUpdateId` / `actionId` 分配与水位（属调度编排）
+- ID 拒收恢复、completion、unique-publish 业务门闸
 - 选车、任务分解、RHCR、交管、充电、completion / grant 等业务判定
 - 跨进程中台、默认 Redis EventBus、多租户协议网关
 - 大而全 Processor / 插件微内核

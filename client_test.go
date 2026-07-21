@@ -123,8 +123,12 @@ func TestPublishOrderBuildsTopic(t *testing.T) {
 		Edges:         []order.Edge{},
 	}
 	ord.HeaderId = 42
-	if err := client.AGV("RobotCorp", "AGV001").PublishOrder(ctx, ord); err != nil {
+	res, err := client.AGV("RobotCorp", "AGV001").PublishOrder(ctx, ord)
+	if err != nil {
 		t.Fatal(err)
+	}
+	if !navlink.PublishAccepted(err) {
+		t.Fatal("expected accepted")
 	}
 	if len(mem.published) != 1 {
 		t.Fatalf("published=%d", len(mem.published))
@@ -132,6 +136,9 @@ func TestPublishOrderBuildsTopic(t *testing.T) {
 	want := "uagv/v2/RobotCorp/AGV001/order"
 	if mem.published[0].topic != want {
 		t.Fatalf("topic=%q want %q", mem.published[0].topic, want)
+	}
+	if res.Topic != want || res.HeaderID != 42 || res.OrderID != "o-1" || res.OrderUpdateID != 1 {
+		t.Fatalf("result=%+v", res)
 	}
 	if ord.HeaderId != 42 || ord.OrderUpdateId != 1 || ord.Version != "v2" {
 		t.Fatalf("caller IDs/version mutated: header=%d update=%d version=%q",
