@@ -61,6 +61,9 @@ type Config struct {
 	// Extensions fills Envelope.Meta from vendor fields (optional).
 	Extensions *extend.Registry
 
+	// Bus is an optional EventBus (same as Client.UseEventBus).
+	Bus EventBus
+
 	// IdentityMapper optionally fills Envelope.RobotID.
 	IdentityMapper IdentityMapper
 

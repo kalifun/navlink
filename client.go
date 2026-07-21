@@ -21,10 +21,17 @@ type Client struct {
 	builder    *outbound.Builder
 	fleet      *session.FleetSession
 	extensions *extend.Registry
+	bus        EventBus
 
 	mu      sync.RWMutex
 	started bool
 	unsubs  []Unsubscribe
+	busUnsubs []Unsubscribe
+
+	wantState bool
+	wantConn  bool
+	wantViz   bool
+	wantFS    bool
 
 	stateHandlers []StateHandler
 	connHandlers  []ConnectionHandler
@@ -52,6 +59,7 @@ func New(cfg Config) (*Client, error) {
 		},
 		builder:    outbound.NewBuilder(cfg.headerVersion(), cfg.HeaderIDs, cfg.OrderUpdateIDs, cfg.ActionIDs),
 		extensions: cfg.Extensions,
+		bus:        cfg.Bus,
 	}
 
 	if cfg.Transport != nil {
@@ -92,30 +100,63 @@ func (c *Client) Topics() topic.Resolver { return c.topics }
 func (c *Client) Transport() Transport { return c.transport }
 
 // OnState registers a typed state handler (may be called before Start).
+// With an EventBus attached, the handler is registered on EventStateReceived.
 func (c *Client) OnState(h StateHandler) {
+	if h == nil {
+		return
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	c.wantState = true
+	if c.bus != nil {
+		_, _ = c.subscribeTypedLocked(EventStateReceived, wrapState(h))
+		return
+	}
 	c.stateHandlers = append(c.stateHandlers, h)
 }
 
 // OnConnection registers a typed connection handler.
 func (c *Client) OnConnection(h ConnectionHandler) {
+	if h == nil {
+		return
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	c.wantConn = true
+	if c.bus != nil {
+		_, _ = c.subscribeTypedLocked(EventConnectionChanged, wrapConnection(h))
+		return
+	}
 	c.connHandlers = append(c.connHandlers, h)
 }
 
 // OnVisualization registers a typed visualization handler.
 func (c *Client) OnVisualization(h VisualizationHandler) {
+	if h == nil {
+		return
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	c.wantViz = true
+	if c.bus != nil {
+		_, _ = c.subscribeTypedLocked(EventVisualizationReceived, wrapVisualization(h))
+		return
+	}
 	c.vizHandlers = append(c.vizHandlers, h)
 }
 
 // OnFactsheet registers a typed factsheet handler.
 func (c *Client) OnFactsheet(h FactsheetHandler) {
+	if h == nil {
+		return
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	c.wantFS = true
+	if c.bus != nil {
+		_, _ = c.subscribeTypedLocked(EventFactsheetReceived, wrapFactsheet(h))
+		return
+	}
 	c.fsHandlers = append(c.fsHandlers, h)
 }
 
@@ -214,7 +255,9 @@ func (c *Client) Stop(ctx context.Context) error {
 	}
 	fleet := c.fleet
 	unsubs := c.unsubs
+	busUnsubs := c.busUnsubs
 	c.unsubs = nil
+	c.busUnsubs = nil
 	transport := c.transport
 	c.started = false
 	c.mu.Unlock()
@@ -230,6 +273,14 @@ func (c *Client) Stop(ctx context.Context) error {
 			firstErr = err
 		}
 	}
+	for i := len(busUnsubs) - 1; i >= 0; i-- {
+		if busUnsubs[i] == nil {
+			continue
+		}
+		if err := busUnsubs[i](ctx); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
 	if err := transport.Stop(ctx); err != nil && firstErr == nil {
 		firstErr = err
 	}
@@ -242,7 +293,7 @@ func (c *Client) subscribeLocked(ctx context.Context) error {
 			return err
 		}
 		// Factsheet stays optional fleet-wide; state/viz come from Track.
-		if len(c.fsHandlers) > 0 {
+		if c.wantFS {
 			filter := c.subscriptionFilter(topic.ChannelFactsheet)
 			unsub, err := c.transport.Subscribe(ctx, filter, c.onRawMessage)
 			if err != nil {
@@ -252,16 +303,16 @@ func (c *Client) subscribeLocked(ctx context.Context) error {
 		}
 	} else {
 		channels := make([]topic.Channel, 0, 4)
-		if len(c.stateHandlers) > 0 {
+		if c.wantState {
 			channels = append(channels, topic.ChannelState)
 		}
-		if len(c.connHandlers) > 0 {
+		if c.wantConn {
 			channels = append(channels, topic.ChannelConnection)
 		}
-		if len(c.vizHandlers) > 0 {
+		if c.wantViz {
 			channels = append(channels, topic.ChannelVisualization)
 		}
-		if len(c.fsHandlers) > 0 {
+		if c.wantFS {
 			channels = append(channels, topic.ChannelFactsheet)
 		}
 

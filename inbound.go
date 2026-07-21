@@ -19,7 +19,7 @@ import (
 func (c *Client) onRawMessage(ctx context.Context, rawTopic string, payload []byte) error {
 	parsed, err := c.topics.Parse(rawTopic)
 	if err != nil {
-		c.reportDecode(Envelope{Topic: rawTopic, Raw: payload, ReceivedAt: time.Now().UTC()}, err)
+		c.reportDecode(ctx, Envelope{Topic: rawTopic, Raw: payload, ReceivedAt: time.Now().UTC()}, err)
 		return nil
 	}
 
@@ -40,7 +40,7 @@ func (c *Client) onRawMessage(ctx context.Context, rawTopic string, payload []by
 	if c.extensions != nil {
 		meta, err := c.extensions.Apply(string(parsed.Channel), payload)
 		if err != nil {
-			c.reportDecode(env, gerrors.NewDecodeFailedWithArgs(err.Error()))
+			c.reportDecode(ctx, env, gerrors.NewDecodeFailedWithArgs(err.Error()))
 			return nil
 		}
 		env.Meta = Meta(meta)
@@ -56,7 +56,7 @@ func (c *Client) onRawMessage(ctx context.Context, rawTopic string, payload []by
 			SerialNumber: header.SerialNumber,
 		}
 		if err := c.checkIdentity(env); err != nil {
-			c.reportDecode(env, err)
+			c.reportDecode(ctx, env, err)
 			return nil
 		}
 	}
@@ -65,28 +65,28 @@ func (c *Client) onRawMessage(ctx context.Context, rawTopic string, payload []by
 	case topic.ChannelState:
 		var msg state.State
 		if err := json.Unmarshal(payload, &msg); err != nil {
-			c.reportDecode(env, gerrors.NewDecodeFailedWithArgs(err.Error()))
+			c.reportDecode(ctx, env, gerrors.NewDecodeFailedWithArgs(err.Error()))
 			return nil
 		}
 		return c.invokeState(ctx, env, &msg)
 	case topic.ChannelConnection:
 		var msg connection.Connection
 		if err := json.Unmarshal(payload, &msg); err != nil {
-			c.reportDecode(env, gerrors.NewDecodeFailedWithArgs(err.Error()))
+			c.reportDecode(ctx, env, gerrors.NewDecodeFailedWithArgs(err.Error()))
 			return nil
 		}
 		return c.invokeConnection(ctx, env, &msg)
 	case topic.ChannelVisualization:
 		var msg visualization.Visualization
 		if err := json.Unmarshal(payload, &msg); err != nil {
-			c.reportDecode(env, gerrors.NewDecodeFailedWithArgs(err.Error()))
+			c.reportDecode(ctx, env, gerrors.NewDecodeFailedWithArgs(err.Error()))
 			return nil
 		}
 		return c.invokeVisualization(ctx, env, &msg)
 	case topic.ChannelFactsheet:
 		var msg factsheet.Factsheet
 		if err := json.Unmarshal(payload, &msg); err != nil {
-			c.reportDecode(env, gerrors.NewDecodeFailedWithArgs(err.Error()))
+			c.reportDecode(ctx, env, gerrors.NewDecodeFailedWithArgs(err.Error()))
 			return nil
 		}
 		return c.invokeFactsheet(ctx, env, &msg)
@@ -125,7 +125,8 @@ func (c *Client) checkIdentity(env Envelope) error {
 	return nil
 }
 
-func (c *Client) reportDecode(env Envelope, err error) {
+func (c *Client) reportDecode(ctx context.Context, env Envelope, err error) {
+	_ = c.publishEvent(ctx, EventDecodeFailed, DecodeFailedEvent{Envelope: env, Err: err})
 	if c.cfg.OnDecodeError != nil {
 		c.cfg.OnDecodeError(env, err)
 	}
@@ -133,8 +134,12 @@ func (c *Client) reportDecode(env Envelope, err error) {
 
 func (c *Client) invokeState(ctx context.Context, env Envelope, msg *state.State) error {
 	c.mu.RLock()
+	bus := c.bus
 	handlers := append([]StateHandler(nil), c.stateHandlers...)
 	c.mu.RUnlock()
+	if bus != nil {
+		return bus.Publish(ctx, EventStateReceived, StateEvent{Envelope: env, State: msg})
+	}
 	for _, h := range handlers {
 		if err := h(ctx, env, msg); err != nil {
 			return err
@@ -150,8 +155,12 @@ func (c *Client) invokeConnection(ctx context.Context, env Envelope, msg *connec
 		}
 	}
 	c.mu.RLock()
+	bus := c.bus
 	handlers := append([]ConnectionHandler(nil), c.connHandlers...)
 	c.mu.RUnlock()
+	if bus != nil {
+		return bus.Publish(ctx, EventConnectionChanged, ConnectionEvent{Envelope: env, Connection: msg})
+	}
 	for _, h := range handlers {
 		if err := h(ctx, env, msg); err != nil {
 			return err
@@ -166,8 +175,12 @@ func sessionAGV(id Identity) session.AGV {
 
 func (c *Client) invokeVisualization(ctx context.Context, env Envelope, msg *visualization.Visualization) error {
 	c.mu.RLock()
+	bus := c.bus
 	handlers := append([]VisualizationHandler(nil), c.vizHandlers...)
 	c.mu.RUnlock()
+	if bus != nil {
+		return bus.Publish(ctx, EventVisualizationReceived, VisualizationEvent{Envelope: env, Visualization: msg})
+	}
 	for _, h := range handlers {
 		if err := h(ctx, env, msg); err != nil {
 			return err
@@ -178,8 +191,12 @@ func (c *Client) invokeVisualization(ctx context.Context, env Envelope, msg *vis
 
 func (c *Client) invokeFactsheet(ctx context.Context, env Envelope, msg *factsheet.Factsheet) error {
 	c.mu.RLock()
+	bus := c.bus
 	handlers := append([]FactsheetHandler(nil), c.fsHandlers...)
 	c.mu.RUnlock()
+	if bus != nil {
+		return bus.Publish(ctx, EventFactsheetReceived, FactsheetEvent{Envelope: env, Factsheet: msg})
+	}
 	for _, h := range handlers {
 		if err := h(ctx, env, msg); err != nil {
 			return err
