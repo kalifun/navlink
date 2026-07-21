@@ -1,0 +1,179 @@
+package navlink
+
+import (
+	"context"
+	"encoding/json"
+	"time"
+
+	vda5050 "github.com/kalifun/vda5050-types-go"
+	"github.com/kalifun/vda5050-types-go/connection"
+	"github.com/kalifun/vda5050-types-go/factsheet"
+	"github.com/kalifun/vda5050-types-go/state"
+	"github.com/kalifun/vda5050-types-go/visualization"
+
+	"github.com/kalifun/navlink/gerrors"
+	"github.com/kalifun/navlink/topic"
+)
+
+func (c *Client) onRawMessage(ctx context.Context, rawTopic string, payload []byte) error {
+	parsed, err := c.topics.Parse(rawTopic)
+	if err != nil {
+		c.reportDecode(Envelope{Topic: rawTopic, Raw: payload, ReceivedAt: time.Now().UTC()}, err)
+		return nil
+	}
+
+	env := Envelope{
+		AGV: Identity{
+			Manufacturer: parsed.Manufacturer,
+			SerialNumber: parsed.SerialNumber,
+		},
+		Topic:      rawTopic,
+		Channel:    parsed.Channel,
+		Raw:        payload,
+		ReceivedAt: time.Now().UTC(),
+		Meta:       Meta{},
+	}
+	if c.cfg.IdentityMapper != nil {
+		env.RobotID = c.cfg.IdentityMapper(parsed.Manufacturer, parsed.SerialNumber)
+	}
+
+	header, herr := extractHeader(payload)
+	if herr == nil && header != nil {
+		env.Header = HeaderSummary{
+			HeaderID:     header.HeaderId,
+			Timestamp:    header.Timestamp,
+			Version:      header.Version,
+			Manufacturer: header.Manufacturer,
+			SerialNumber: header.SerialNumber,
+		}
+		if err := c.checkIdentity(env); err != nil {
+			c.reportDecode(env, err)
+			return nil
+		}
+	}
+
+	switch parsed.Channel {
+	case topic.ChannelState:
+		var msg state.State
+		if err := json.Unmarshal(payload, &msg); err != nil {
+			c.reportDecode(env, gerrors.NewDecodeFailedWithArgs(err.Error()))
+			return nil
+		}
+		return c.invokeState(ctx, env, &msg)
+	case topic.ChannelConnection:
+		var msg connection.Connection
+		if err := json.Unmarshal(payload, &msg); err != nil {
+			c.reportDecode(env, gerrors.NewDecodeFailedWithArgs(err.Error()))
+			return nil
+		}
+		return c.invokeConnection(ctx, env, &msg)
+	case topic.ChannelVisualization:
+		var msg visualization.Visualization
+		if err := json.Unmarshal(payload, &msg); err != nil {
+			c.reportDecode(env, gerrors.NewDecodeFailedWithArgs(err.Error()))
+			return nil
+		}
+		return c.invokeVisualization(ctx, env, &msg)
+	case topic.ChannelFactsheet:
+		var msg factsheet.Factsheet
+		if err := json.Unmarshal(payload, &msg); err != nil {
+			c.reportDecode(env, gerrors.NewDecodeFailedWithArgs(err.Error()))
+			return nil
+		}
+		return c.invokeFactsheet(ctx, env, &msg)
+	default:
+		return nil
+	}
+}
+
+func (c *Client) dispatchTopic(ctx context.Context, rawTopic string, payload []byte, h TopicHandler) error {
+	env := Envelope{
+		Topic:      rawTopic,
+		Raw:        payload,
+		ReceivedAt: time.Now().UTC(),
+		Meta:       Meta{},
+	}
+	if parsed, err := c.topics.Parse(rawTopic); err == nil {
+		env.AGV = Identity{Manufacturer: parsed.Manufacturer, SerialNumber: parsed.SerialNumber}
+		env.Channel = parsed.Channel
+		if c.cfg.IdentityMapper != nil {
+			env.RobotID = c.cfg.IdentityMapper(parsed.Manufacturer, parsed.SerialNumber)
+		}
+	}
+	return h(ctx, env)
+}
+
+func (c *Client) checkIdentity(env Envelope) error {
+	if !c.cfg.strictIdentity() {
+		return nil
+	}
+	if env.Header.Manufacturer == "" && env.Header.SerialNumber == "" {
+		return nil
+	}
+	if env.Header.Manufacturer != env.AGV.Manufacturer || env.Header.SerialNumber != env.AGV.SerialNumber {
+		return gerrors.IdentityMismatch
+	}
+	return nil
+}
+
+func (c *Client) reportDecode(env Envelope, err error) {
+	if c.cfg.OnDecodeError != nil {
+		c.cfg.OnDecodeError(env, err)
+	}
+}
+
+func (c *Client) invokeState(ctx context.Context, env Envelope, msg *state.State) error {
+	c.mu.RLock()
+	handlers := append([]StateHandler(nil), c.stateHandlers...)
+	c.mu.RUnlock()
+	for _, h := range handlers {
+		if err := h(ctx, env, msg); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Client) invokeConnection(ctx context.Context, env Envelope, msg *connection.Connection) error {
+	c.mu.RLock()
+	handlers := append([]ConnectionHandler(nil), c.connHandlers...)
+	c.mu.RUnlock()
+	for _, h := range handlers {
+		if err := h(ctx, env, msg); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Client) invokeVisualization(ctx context.Context, env Envelope, msg *visualization.Visualization) error {
+	c.mu.RLock()
+	handlers := append([]VisualizationHandler(nil), c.vizHandlers...)
+	c.mu.RUnlock()
+	for _, h := range handlers {
+		if err := h(ctx, env, msg); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Client) invokeFactsheet(ctx context.Context, env Envelope, msg *factsheet.Factsheet) error {
+	c.mu.RLock()
+	handlers := append([]FactsheetHandler(nil), c.fsHandlers...)
+	c.mu.RUnlock()
+	for _, h := range handlers {
+		if err := h(ctx, env, msg); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func extractHeader(payload []byte) (*vda5050.ProtocolHeader, error) {
+	var h vda5050.ProtocolHeader
+	if err := json.Unmarshal(payload, &h); err != nil {
+		return nil, err
+	}
+	return &h, nil
+}
