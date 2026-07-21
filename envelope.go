@@ -28,4 +28,8 @@ type Envelope struct {
 	Header     HeaderSummary
 	Meta       Meta
 	RobotID    string // filled when Config.IdentityMapper is set
+
+	// InboundDisposition is set when Config.InboundPolicy is configured.
+	// Empty means unclassified (default accept-all).
+	InboundDisposition InboundDisposition
 }

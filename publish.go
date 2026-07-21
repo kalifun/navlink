@@ -60,6 +60,12 @@ func IsPublishBrokerRejected(err error) bool {
 	return errors.Is(err, gerrors.PublishFailed)
 }
 
+// IsPublishValidationFailed reports light outbound validation rejection (bad packet).
+// Distinct from broker reject — safe to fix the packet; usually not a same-ID retry case.
+func IsPublishValidationFailed(err error) bool {
+	return IsOutboundValidationFailed(err)
+}
+
 func validatePublishQoS(qos byte) error {
 	if qos > 2 {
 		return gerrors.QosNotSupported.With("qos", qos)

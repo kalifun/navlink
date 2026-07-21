@@ -21,8 +21,8 @@ var clientNotStartedErr = gerr.ErrWrapper{
 	Category: "system",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"cn": "客户端未启动",
 		"en": "Client is not started",
+		"cn": "客户端未启动",
 	},
 	Description: "navlink client has not been started",
 }
@@ -33,8 +33,8 @@ var clientAlreadyStartedErr = gerr.ErrWrapper{
 	Category: "system",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"en": "Client is already started",
 		"cn": "客户端已启动",
+		"en": "Client is already started",
 	},
 	Description: "navlink client is already started",
 }
@@ -45,8 +45,8 @@ var decodeFailedErr = gerr.ErrWrapper{
 	Category: "protocol",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"cn": "解码失败: %s",
 		"en": "Decode failed: %s",
+		"cn": "解码失败: %s",
 	},
 	Description: "failed to decode VDA5050 payload",
 }
@@ -57,8 +57,8 @@ var identityMismatchErr = gerr.ErrWrapper{
 	Category: "validation",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"en": "Identity mismatch between topic and payload header",
 		"cn": "身份不一致: topic 与报文 header 不匹配",
+		"en": "Identity mismatch between topic and payload header",
 	},
 	Description: "topic identity does not match payload header",
 }
@@ -105,8 +105,8 @@ var connectionFailedErr = gerr.ErrWrapper{
 	Category: "network",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"en": "Failed to connect to MQTT broker",
 		"cn": "连接MQTT代理失败",
+		"en": "Failed to connect to MQTT broker",
 	},
 	Description: "failed to connect to mqtt broker",
 }
@@ -129,8 +129,8 @@ var subscriptionFailedErr = gerr.ErrWrapper{
 	Category: "network",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"en": "Failed to subscribe to topic",
 		"cn": "订阅主题失败",
+		"en": "Failed to subscribe to topic",
 	},
 	Description: "failed to subscribe to topic",
 }
@@ -153,8 +153,8 @@ var invalidTopicErr = gerr.ErrWrapper{
 	Category: "validation",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"cn": "无效的MQTT主题格式",
 		"en": "Invalid MQTT topic format",
+		"cn": "无效的MQTT主题格式",
 	},
 	Description: "invalid mqtt topic format",
 }
@@ -165,8 +165,8 @@ var clientNotConnectedErr = gerr.ErrWrapper{
 	Category: "network",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"en": "MQTT client is not connected",
 		"cn": "MQTT客户端未连接",
+		"en": "MQTT client is not connected",
 	},
 	Description: "mqtt client is not connected",
 }
@@ -177,8 +177,8 @@ var reconnectFailedErr = gerr.ErrWrapper{
 	Category: "network",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"cn": "重新连接代理失败",
 		"en": "Failed to reconnect to broker",
+		"cn": "重新连接代理失败",
 	},
 	Description: "failed to reconnect to broker",
 }
@@ -201,8 +201,8 @@ var willMessageErrorErr = gerr.ErrWrapper{
 	Category: "validation",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"en": "Invalid will message configuration",
 		"cn": "遗嘱消息配置无效",
+		"en": "Invalid will message configuration",
 	},
 	Description: "invalid will message configuration",
 }
@@ -225,8 +225,8 @@ var messageTooLargeErr = gerr.ErrWrapper{
 	Category: "validation",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"cn": "消息大小超过限制",
 		"en": "Message size exceeds limit",
+		"cn": "消息大小超过限制",
 	},
 	Description: "message size exceeds limit",
 }
@@ -237,8 +237,8 @@ var brokerUnavailableErr = gerr.ErrWrapper{
 	Category: "network",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"cn": "MQTT代理不可用",
 		"en": "MQTT broker is unavailable",
+		"cn": "MQTT代理不可用",
 	},
 	Description: "mqtt broker is unavailable",
 }
@@ -249,8 +249,8 @@ var protocolErrorErr = gerr.ErrWrapper{
 	Category: "protocol",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"en": "MQTT protocol error",
 		"cn": "MQTT协议错误",
+		"en": "MQTT protocol error",
 	},
 	Description: "mqtt protocol error",
 }
@@ -261,8 +261,8 @@ var timeoutErrorErr = gerr.ErrWrapper{
 	Category: "network",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"en": "Operation timed out",
 		"cn": "操作超时",
+		"en": "Operation timed out",
 	},
 	Description: "operation timed out",
 }
@@ -285,8 +285,8 @@ var notSubscribedErr = gerr.ErrWrapper{
 	Category: "validation",
 	Severity: gerr.SeverityWarning,
 	Messages: map[string]string{
-		"cn": "未订阅该主题",
 		"en": "Not subscribed to topic",
+		"cn": "未订阅该主题",
 	},
 	Description: "not subscribed to topic",
 }
@@ -301,6 +301,18 @@ var invalidPayloadErr = gerr.ErrWrapper{
 		"en": "Invalid message payload",
 	},
 	Description: "invalid message payload",
+}
+
+var outboundValidationFailedErr = gerr.ErrWrapper{
+	Key:      "OutboundValidationFailed",
+	Code:     "OutboundValidationFailed",
+	Category: "validation",
+	Severity: gerr.SeverityError,
+	Messages: map[string]string{
+		"cn": "出站校验失败",
+		"en": "Outbound validation failed",
+	},
+	Description: "outbound message failed light pre-publish validation",
 }
 
 var configurationErrorErr = gerr.ErrWrapper{
@@ -321,8 +333,8 @@ var subscriptionNotActiveErr = gerr.ErrWrapper{
 	Category: "network",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"en": "Subscription to topic %s is not active",
 		"cn": "主题 %s 的订阅未激活",
+		"en": "Subscription to topic %s is not active",
 	},
 	Description: "subscription to topic is not active",
 }
@@ -333,8 +345,8 @@ var unsubscribeFailedErr = gerr.ErrWrapper{
 	Category: "network",
 	Severity: gerr.SeverityError,
 	Messages: map[string]string{
-		"en": "Failed to unsubscribe from topic %s: %v",
 		"cn": "取消订阅主题 %s 失败: %v",
+		"en": "Failed to unsubscribe from topic %s: %v",
 	},
 	Description: "failed to unsubscribe from topic",
 }
@@ -413,6 +425,9 @@ var NotSubscribed = gerr.NewError(notSubscribedErr)
 
 // InvalidPayload represents invalid message payload
 var InvalidPayload = gerr.NewError(invalidPayloadErr)
+
+// OutboundValidationFailed represents outbound message failed light pre-publish validation
+var OutboundValidationFailed = gerr.NewError(outboundValidationFailedErr)
 
 // ConfigurationError represents invalid mqtt configuration
 var ConfigurationError = gerr.NewError(configurationErrorErr)
@@ -497,6 +512,9 @@ func init() {
 		panic(err)
 	}
 	if err := gerr.Register(invalidPayloadErr); err != nil {
+		panic(err)
+	}
+	if err := gerr.Register(outboundValidationFailedErr); err != nil {
 		panic(err)
 	}
 	if err := gerr.Register(configurationErrorErr); err != nil {
@@ -660,6 +678,11 @@ func NewNotSubscribedWithMetadata(key string, value interface{}) *gerr.Error {
 // NewInvalidPayloadWithMetadata creates a InvalidPayload error with metadata
 func NewInvalidPayloadWithMetadata(key string, value interface{}) *gerr.Error {
 	return InvalidPayload.With(key, value)
+}
+
+// NewOutboundValidationFailedWithMetadata creates a OutboundValidationFailed error with metadata
+func NewOutboundValidationFailedWithMetadata(key string, value interface{}) *gerr.Error {
+	return OutboundValidationFailed.With(key, value)
 }
 
 // ConfigurationErrorF indicates this error requires format arguments

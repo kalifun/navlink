@@ -59,6 +59,7 @@ func (c *Client) onRawMessage(ctx context.Context, rawTopic string, payload []by
 			c.reportDecode(ctx, env, err)
 			return nil
 		}
+		c.applyInboundPolicy(&env)
 	}
 
 	switch parsed.Channel {
@@ -123,6 +124,21 @@ func (c *Client) checkIdentity(env Envelope) error {
 		return gerrors.IdentityMismatch
 	}
 	return nil
+}
+
+func (c *Client) applyInboundPolicy(env *Envelope) {
+	if c.cfg.InboundPolicy == nil || env == nil {
+		return
+	}
+	d := c.cfg.InboundPolicy.Classify(env.AGV, env.Channel, env.Header.HeaderID)
+	if d == "" {
+		d = InboundAccept
+	}
+	env.InboundDisposition = d
+	if env.Meta == nil {
+		env.Meta = Meta{}
+	}
+	env.Meta[MetaInboundDisposition] = string(d)
 }
 
 func (c *Client) reportDecode(ctx context.Context, env Envelope, err error) {

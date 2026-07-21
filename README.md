@@ -37,7 +37,8 @@ defer client.Stop(ctx)
 
 ```bash
 go run ./examples/subscribe-state
-go run ./examples/platform-wiring   # 集中注册 L1 + 平台自定义事件
+go run ./examples/platform-wiring          # 集中注册 L1 + 平台自定义事件
+go run ./examples/dispatch-egress-sketch   # 调度出站竖切：PublishAccepted 才 Record
 ```
 
 ## 布局
@@ -56,6 +57,7 @@ gerrors/                 # glitch 生成，勿手改
 errors/*.yaml            # 错误码源
 examples/subscribe-state
 examples/platform-wiring
+examples/dispatch-egress-sketch
 ```
 
 ## 开发
@@ -75,8 +77,15 @@ if navlink.PublishAccepted(err) {
     _ = res.Topic // res.Payload / HeaderID / OrderUpdateID …
 }
 // 失败可区分：IsPublishNotStarted / IsPublishTimeout / IsPublishCanceled /
-// IsPublishQoSRejected / IsPublishBrokerRejected；nil 入参直接 InvalidConfig
+// IsPublishQoSRejected / IsPublishBrokerRejected / IsPublishValidationFailed
 ```
+
+默认在 Publish 前做**轻量校验**（不分配 ID）：`headerId==0`、空 `orderId`、
+`orderUpdateId==0`、空 `actionId`、与 `AGVHandle` 身份不一致 → `OutboundValidationFailed`。
+可用 `Config.OutboundValidation` 关闭或放宽。
+
+可选 `Config.InboundPolicy`（如 `NewHeaderSequencePolicy()`）按 headerId 标注
+`Accept|Stale|Duplicate` 到 `Envelope.InboundDisposition` / Meta；**默认不丢包**。
 
 入站 `Config.IdentityMapper`：`(mfr, sn) → robotID`，写入 `Envelope.RobotID`。  
 厂商字段（如 KC `currentNodeId`）走 `Config.Extensions` → `Envelope.Meta`，见 [extend/README.md](extend/README.md)。

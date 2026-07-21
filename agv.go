@@ -36,6 +36,9 @@ func (a *AGVHandle) PublishOrder(ctx context.Context, o *order.Order) (PublishRe
 	if o == nil {
 		return res, gerrors.NewInvalidConfigWithArgs("order is nil")
 	}
+	if err := validateOutboundOrder(o, a.manufacturer, a.serial, a.client.cfg.outboundValidation()); err != nil {
+		return res, err
+	}
 	a.client.builder.PrepareOrder(o, a.manufacturer, a.serial)
 
 	payload, err := json.Marshal(o)
@@ -74,6 +77,9 @@ func (a *AGVHandle) PublishInstantActions(ctx context.Context, ia *instant_actio
 	}
 	if ia == nil {
 		return res, gerrors.NewInvalidConfigWithArgs("instantActions is nil")
+	}
+	if err := validateOutboundInstantActions(ia, a.manufacturer, a.serial, a.client.cfg.outboundValidation()); err != nil {
+		return res, err
 	}
 	a.client.builder.PrepareInstantActions(ia, a.manufacturer, a.serial)
 

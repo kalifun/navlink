@@ -111,12 +111,14 @@ func TestPublishOrderRejectsBadQoS(t *testing.T) {
 	}
 	defer client.Stop(ctx)
 
-	_, err = client.AGV("M", "S").PublishOrder(ctx, &order.Order{
+	ord := &order.Order{
 		OrderId:       "o",
 		OrderUpdateId: 1,
 		Nodes:         []order.Node{},
 		Edges:         []order.Edge{},
-	})
+	}
+	ord.HeaderId = 1
+	_, err = client.AGV("M", "S").PublishOrder(ctx, ord)
 	if !navlink.IsPublishQoSRejected(err) {
 		t.Fatalf("err=%v", err)
 	}

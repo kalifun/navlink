@@ -224,6 +224,15 @@ error:
       cn: "无效的消息负载"
       en: "Invalid message payload"
 
+  - key: OutboundValidationFailed
+    code: OutboundValidationFailed
+    category: validation
+    severity: error
+    description: outbound message failed light pre-publish validation
+    message:
+      cn: "出站校验失败"
+      en: "Outbound validation failed"
+
   - key: ConfigurationError
     code: ConfigurationError
     category: validation

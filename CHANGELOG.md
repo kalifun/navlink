@@ -13,6 +13,13 @@
 
 ### Added
 
+- **Outbound light validation**: reject obviously bad packets before MQTT
+  (`OutboundValidationFailed` / `IsPublishValidationFailed`); configurable via
+  `Config.OutboundValidation`.
+- **Inbound header policy hook**: optional `InboundPolicy` +
+  `NewHeaderSequencePolicy` annotate `Accept|Stale|Duplicate` (no drop by default).
+- **Example** `examples/dispatch-egress-sketch`: GetNext → Publish → Record only on
+  `PublishAccepted`.
 - **Execution visibility**: `PublishResult` (topic/payload/header summary) plus
   `PublishAccepted` / `IsPublishNotStarted` / `IsPublishTimeout` /
   `IsPublishCanceled` / `IsPublishQoSRejected` / `IsPublishBrokerRejected`.

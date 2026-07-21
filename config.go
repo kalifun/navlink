@@ -66,6 +66,14 @@ type Config struct {
 	// IdentityMapper optionally fills Envelope.RobotID.
 	IdentityMapper IdentityMapper
 
+	// OutboundValidation configures light pre-publish checks. Nil = enabled defaults
+	// (reject headerId 0, empty orderId, orderUpdateId 0, empty actionId, identity mismatch).
+	OutboundValidation *OutboundValidation
+
+	// InboundPolicy optionally classifies inbound headerId (Accept/Stale/Duplicate).
+	// Nil = accept-all. Classification is annotated on Envelope; messages are not dropped.
+	InboundPolicy InboundPolicy
+
 	// OnDecodeError is called when decode or identity checks fail.
 	OnDecodeError DecodeErrorHandler
 }

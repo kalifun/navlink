@@ -20,5 +20,8 @@ if navlink.PublishAccepted(err) {
 ```
 
 成败语义见根目录 `publish.go`：`ClientNotStarted` / `QosNotSupported` /
-`TimeoutError` / `context.Canceled` / `PublishFailed` 可区分。
+`TimeoutError` / `context.Canceled` / `PublishFailed` /
+`OutboundValidationFailed` 可区分。
 仅 `err == nil` 表示 MQTT QoS 握手成功（broker 收下），不是车侧已接受 order。
+
+Publish 前默认轻量校验（不发号）：见 `outbound_validate.go` / `Config.OutboundValidation`。
