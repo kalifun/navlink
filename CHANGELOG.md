@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Intentionally deferred
+
+Connection observability, testkit publish-failure injection, JSONL replay, metrics
+hooks, AGV-side sim helpers — see README「非目标」and PRODUCT_SPEC backlog.
+
+## 0.6.0 — 2026-07-21
+
+Execution-endpoint baseline for dispatcher / sim wiring.
+
 ### Changed
 
 - **Execution-end outbound**: removed IdAllocator (`HeaderIDs` / `OrderUpdateIDs` /
@@ -33,5 +42,4 @@
 
 ### Intentionally out of scope
 
-See README「非目标」。P2 still optional: Order/Action builder helpers, JSONL replay,
-metrics hooks, AGV-side sim helpers (F-15～F-18).
+See README「非目标」。
