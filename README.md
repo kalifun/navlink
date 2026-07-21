@@ -64,3 +64,17 @@ examples/platform-wiring
 make test
 make check   # generr + fmt + vet + test
 ```
+
+## 非目标
+
+navlink **不做**也不逐渐滑向：
+
+- 选车、任务分解、RHCR、交管、充电、completion / grant 等业务判定
+- 跨进程中台、默认 Redis EventBus、多租户协议网关
+- 大而全 Processor / 插件微内核
+- 用库代码强制消费方架构
+- 领域事件（如 `EpisodeOpened`）——平台用 `Emit` 自行挂载
+
+VDA 收发走 `Client` / `AGV`；非 VDA 的 application MQTT 用 `Client.Transport()`，不要混成一个上帝对象。
+
+详见 [CHANGELOG.md](CHANGELOG.md)。

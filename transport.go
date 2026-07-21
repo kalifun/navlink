@@ -22,3 +22,9 @@ type Transport interface {
 	Publish(ctx context.Context, topic string, payload []byte, opts PublishOptions) error
 	Subscribe(ctx context.Context, filter string, handler RawHandler) (Unsubscribe, error)
 }
+
+// ReconnectAware is implemented by transports that can signal reconnects.
+// The handler is invoked after a successful reconnect, not on the initial connect.
+type ReconnectAware interface {
+	SetOnReconnect(fn func())
+}

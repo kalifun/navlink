@@ -3,7 +3,10 @@ package navlink
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"time"
 
+	vda5050 "github.com/kalifun/vda5050-types-go"
 	"github.com/kalifun/vda5050-types-go/instant_actions"
 	"github.com/kalifun/vda5050-types-go/order"
 
@@ -64,6 +67,25 @@ func (a *AGVHandle) PublishInstantActions(ctx context.Context, ia *instant_actio
 // NextActionID allocates a monotonic actionId for this AGV when ActionIDs is configured.
 func (a *AGVHandle) NextActionID() (string, error) {
 	return a.client.builder.NextActionID(a.manufacturer, a.serial)
+}
+
+// CancelOrder publishes a standard cancelOrder instantAction.
+// actionId comes from ActionIDs when configured; otherwise a timestamp-based id is used.
+func (a *AGVHandle) CancelOrder(ctx context.Context) error {
+	actionID, err := a.NextActionID()
+	if err != nil {
+		actionID = fmt.Sprintf("cancel-%d", time.Now().UTC().UnixNano())
+	}
+	ia := &instant_actions.InstantActions{
+		Actions: []instant_actions.InstantAction{
+			{
+				ActionType:   "cancelOrder",
+				ActionId:     actionID,
+				BlockingType: vda5050.Hard,
+			},
+		},
+	}
+	return a.PublishInstantActions(ctx, ia)
 }
 
 // SyncOrderUpdateFromVehicle observes a vehicle-reported orderUpdateId without rewinding.

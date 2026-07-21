@@ -36,3 +36,8 @@ inner := testkit.NewFakeBroker()
 rec := &testkit.Recorder{}
 rt := testkit.NewRecordingTransport(inner, rec)
 ```
+
+## Reconnect
+
+`FakeBroker` implements `ReconnectAware`. Call `SimulateReconnect()` to drop
+subscriptions and trigger Client's restore path (same as MQTT auto-reconnect).

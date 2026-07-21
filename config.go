@@ -41,6 +41,11 @@ type Config struct {
 	CleanSession  bool
 	AutoReconnect bool
 
+	// RestoreSubscriptionsOnReconnect re-subscribes VDA topics after MQTT reconnect.
+	// Default true. Applies when the transport implements ReconnectAware (built-in MQTT,
+	// testkit FakeBroker). FleetSession uses Restore; other subscriptions are recreated.
+	RestoreSubscriptionsOnReconnect *bool
+
 	// StrictIdentity validates payload manufacturer/serial against the topic (default true).
 	StrictIdentity *bool
 
@@ -83,6 +88,13 @@ func (c Config) strictIdentity() bool {
 		return true
 	}
 	return *c.StrictIdentity
+}
+
+func (c Config) restoreOnReconnect() bool {
+	if c.RestoreSubscriptionsOnReconnect == nil {
+		return true
+	}
+	return *c.RestoreSubscriptionsOnReconnect
 }
 
 func (c Config) validate() error {

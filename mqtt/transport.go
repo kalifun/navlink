@@ -20,6 +20,9 @@ type Config struct {
 	KeepAlive     time.Duration
 	CleanSession  bool
 	AutoReconnect bool
+
+	// OnReconnect is called after a successful reconnect (not the initial connect).
+	OnReconnect func()
 }
 
 // Handler handles a raw MQTT message.
@@ -33,13 +36,22 @@ type Transport struct {
 	cfg    Config
 	client pahomqtt.Client
 
-	mu      sync.RWMutex
-	running bool
+	mu           sync.RWMutex
+	running      bool
+	wasConnected bool
+	onReconnect  func()
 }
 
 // New creates an MQTT transport (does not connect).
 func New(cfg Config) *Transport {
-	return &Transport{cfg: cfg}
+	return &Transport{cfg: cfg, onReconnect: cfg.OnReconnect}
+}
+
+// SetOnReconnect sets the reconnect callback (overrides Config.OnReconnect).
+func (t *Transport) SetOnReconnect(fn func()) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.onReconnect = fn
 }
 
 // Start connects to the broker.
@@ -68,6 +80,7 @@ func (t *Transport) Start(ctx context.Context) error {
 	opts.SetCleanSession(t.cfg.CleanSession)
 	opts.SetAutoReconnect(t.cfg.AutoReconnect)
 	opts.SetConnectRetry(t.cfg.AutoReconnect)
+	opts.SetOnConnectHandler(t.onConnect)
 
 	t.client = pahomqtt.NewClient(opts)
 	token := t.client.Connect()
@@ -82,6 +95,17 @@ func (t *Transport) Start(ctx context.Context) error {
 	return nil
 }
 
+func (t *Transport) onConnect(_ pahomqtt.Client) {
+	t.mu.Lock()
+	first := !t.wasConnected
+	t.wasConnected = true
+	handler := t.onReconnect
+	t.mu.Unlock()
+	if !first && handler != nil {
+		handler()
+	}
+}
+
 // Stop disconnects from the broker.
 func (t *Transport) Stop(ctx context.Context) error {
 	t.mu.Lock()
@@ -92,6 +116,7 @@ func (t *Transport) Stop(ctx context.Context) error {
 	}
 	t.client.Disconnect(250)
 	t.running = false
+	t.wasConnected = false
 	return nil
 }
 

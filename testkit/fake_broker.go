@@ -18,11 +18,12 @@ type PublishedMessage struct {
 // FakeBroker is an in-process MQTT stand-in for unit tests.
 // It implements navlink.Transport so Client tests need no paho / real broker.
 type FakeBroker struct {
-	mu        sync.Mutex
-	running   bool
-	nextID    int
-	subs      map[int]sub
-	published []PublishedMessage
+	mu          sync.Mutex
+	running     bool
+	nextID      int
+	subs        map[int]sub
+	published   []PublishedMessage
+	onReconnect func()
 }
 
 type sub struct {
@@ -136,6 +137,25 @@ func (b *FakeBroker) ClearPublished() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.published = nil
+}
+
+// SetOnReconnect implements navlink.ReconnectAware.
+func (b *FakeBroker) SetOnReconnect(fn func()) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.onReconnect = fn
+}
+
+// SimulateReconnect clears subscriptions (as CleanSession reconnect would) and
+// invokes the reconnect handler so Client can restore VDA subscriptions.
+func (b *FakeBroker) SimulateReconnect() {
+	b.mu.Lock()
+	b.subs = make(map[int]sub)
+	handler := b.onReconnect
+	b.mu.Unlock()
+	if handler != nil {
+		handler()
+	}
 }
 
 // Filters returns current subscription filters (for assertions).

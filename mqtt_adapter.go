@@ -7,12 +7,11 @@ import (
 )
 
 // mqttTransport adapts mqtt.Transport to navlink.Transport without import cycles.
-// Errors already come from gerrors inside mqtt; no remapping here.
 type mqttTransport struct {
 	inner *mqtt.Transport
 }
 
-func newMQTTTransport(cfg mqtt.Config) Transport {
+func newMQTTTransport(cfg mqtt.Config) *mqttTransport {
 	return &mqttTransport{inner: mqtt.New(cfg)}
 }
 
@@ -34,4 +33,8 @@ func (t *mqttTransport) Subscribe(ctx context.Context, filter string, handler Ra
 		return nil, err
 	}
 	return Unsubscribe(unsub), nil
+}
+
+func (t *mqttTransport) SetOnReconnect(fn func()) {
+	t.inner.SetOnReconnect(fn)
 }

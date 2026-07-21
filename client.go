@@ -89,6 +89,12 @@ func New(cfg Config) (*Client, error) {
 		c.fleet = session.NewFleetSession(c.topics, c.fleetSubscribe, opts)
 	}
 
+	if cfg.restoreOnReconnect() {
+		if ra, ok := c.transport.(ReconnectAware); ok {
+			ra.SetOnReconnect(c.handleReconnect)
+		}
+	}
+
 	return c, nil
 }
 
@@ -345,6 +351,32 @@ func (c *Client) fleetSubscribe(ctx context.Context, filter string) (session.Uns
 		return nil, err
 	}
 	return session.Unsubscribe(unsub), nil
+}
+
+// handleReconnect restores VDA subscriptions after transport reconnect.
+// Stale Unsubscribe handles are discarded; FleetSession.Restore re-tracks AGVs.
+func (c *Client) handleReconnect() {
+	ctx := context.Background()
+
+	c.mu.Lock()
+	if !c.started {
+		c.mu.Unlock()
+		return
+	}
+	c.unsubs = nil
+	fleet := c.fleet
+	c.mu.Unlock()
+
+	if fleet != nil {
+		_ = fleet.Restore(ctx)
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if !c.started {
+		return
+	}
+	_ = c.subscribeLocked(ctx)
 }
 
 func (c *Client) subscriptionFilter(ch topic.Channel) string {
