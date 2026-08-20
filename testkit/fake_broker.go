@@ -4,8 +4,10 @@ import (
 	"context"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/kalifun/navlink"
+	"github.com/kalifun/navlink/gerrors"
 )
 
 // PublishedMessage is one outbound message captured by FakeBroker.
@@ -23,7 +25,11 @@ type FakeBroker struct {
 	nextID      int
 	subs        map[int]sub
 	published   []PublishedMessage
+	fail        error
+	hangFor     time.Duration
+	hang        bool
 	onReconnect func()
+	onLost      func(error)
 }
 
 type sub struct {
@@ -56,6 +62,49 @@ func (b *FakeBroker) Stop(ctx context.Context) error {
 	return nil
 }
 
+// FailNextPublish makes the next Publish return err without delivering.
+// ClassifyPublish treats this as DefinitelyNotStarted (not in-flight).
+func (b *FakeBroker) FailNextPublish(err error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.fail = err
+	b.hang = false
+}
+
+// HangNextPublish makes the next Publish block for d then return a timeout
+// marked as attempted (Uncertain). d <= 0 waits until ctx is done.
+func (b *FakeBroker) HangNextPublish(d time.Duration) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.hang = true
+	b.hangFor = d
+	b.fail = nil
+}
+
+// Connected implements navlink.ConnectionStatus.
+func (b *FakeBroker) Connected() bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.running
+}
+
+// SetOnConnectionLost implements navlink.ConnectionLostAware.
+func (b *FakeBroker) SetOnConnectionLost(fn func(error)) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.onLost = fn
+}
+
+// SimulateDisconnect fires the connection-lost callback without clearing subs.
+func (b *FakeBroker) SimulateDisconnect(err error) {
+	b.mu.Lock()
+	handler := b.onLost
+	b.mu.Unlock()
+	if handler != nil {
+		handler(err)
+	}
+}
+
 // Publish records the message and delivers it to matching subscribers (loopback).
 func (b *FakeBroker) Publish(ctx context.Context, topic string, payload []byte, opts navlink.PublishOptions) error {
 	b.mu.Lock()
@@ -63,6 +112,32 @@ func (b *FakeBroker) Publish(ctx context.Context, topic string, payload []byte, 
 		b.mu.Unlock()
 		return errNotRunning
 	}
+	fail := b.fail
+	hang := b.hang
+	hangFor := b.hangFor
+	b.fail = nil
+	b.hang = false
+	b.mu.Unlock()
+
+	if fail != nil {
+		return fail
+	}
+	if hang {
+		if hangFor <= 0 {
+			<-ctx.Done()
+			return navlink.MarkPublishAttempted(ctx.Err())
+		}
+		timer := time.NewTimer(hangFor)
+		defer timer.Stop()
+		select {
+		case <-ctx.Done():
+			return navlink.MarkPublishAttempted(ctx.Err())
+		case <-timer.C:
+			return navlink.MarkPublishAttempted(gerrors.TimeoutError)
+		}
+	}
+
+	b.mu.Lock()
 	cp := append([]byte(nil), payload...)
 	b.published = append(b.published, PublishedMessage{Topic: topic, Payload: cp, Opts: opts})
 	subs := make([]sub, 0, len(b.subs))

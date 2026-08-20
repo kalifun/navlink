@@ -10,6 +10,42 @@ import (
 	"github.com/kalifun/vda5050-types-go/order"
 )
 
+func TestClassifyPublish(t *testing.T) {
+	if navlink.ClassifyPublish(nil) != navlink.PublishOutcomeAccepted {
+		t.Fatal("nil")
+	}
+	if navlink.ClassifyPublish(gerrors.ClientNotStarted) != navlink.PublishOutcomeNotStarted {
+		t.Fatal("not started")
+	}
+	if navlink.ClassifyPublish(gerrors.MQTTTransportNotRunning) != navlink.PublishOutcomeNotStarted {
+		t.Fatal("transport")
+	}
+	if navlink.ClassifyPublish(gerrors.PublishFailed) != navlink.PublishOutcomeNotStarted {
+		t.Fatal("broker reject")
+	}
+	if navlink.ClassifyPublish(gerrors.QosNotSupported) != navlink.PublishOutcomeNotStarted {
+		t.Fatal("qos")
+	}
+	if navlink.ClassifyPublish(gerrors.NewInvalidConfigWithArgs("order is nil")) != navlink.PublishOutcomeNotStarted {
+		t.Fatal("invalid config")
+	}
+	if navlink.ClassifyPublish(context.Canceled) != navlink.PublishOutcomeNotStarted {
+		t.Fatal("cancel before send")
+	}
+	if navlink.ClassifyPublish(context.DeadlineExceeded) != navlink.PublishOutcomeNotStarted {
+		t.Fatal("deadline before send")
+	}
+	if navlink.ClassifyPublish(gerrors.TimeoutError) != navlink.PublishOutcomeUncertain {
+		t.Fatal("timeout")
+	}
+	if navlink.ClassifyPublish(navlink.MarkPublishAttempted(context.Canceled)) != navlink.PublishOutcomeUncertain {
+		t.Fatal("cancel after send")
+	}
+	if navlink.ClassifyPublish(navlink.MarkPublishAttempted(context.DeadlineExceeded)) != navlink.PublishOutcomeUncertain {
+		t.Fatal("deadline after send")
+	}
+}
+
 func TestPublishErrorClassifiers(t *testing.T) {
 	if !navlink.PublishAccepted(nil) {
 		t.Fatal("nil should be accepted")
@@ -100,7 +136,7 @@ func TestPublishOrderRejectsBadQoS(t *testing.T) {
 		Interface: "uagv",
 		Version:   "v2",
 		Transport: mem,
-		QoS:       9,
+		QoS:       navlink.QoSOf(9),
 	})
 	if err != nil {
 		t.Fatal(err)

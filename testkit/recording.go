@@ -9,9 +9,9 @@ import (
 
 // Recorder captures publish/subscribe activity for assertions.
 type Recorder struct {
-	mu          sync.Mutex
-	published   []PublishedMessage
-	subscribed  []string
+	mu           sync.Mutex
+	published    []PublishedMessage
+	subscribed   []string
 	unsubscribed []string
 }
 
@@ -65,6 +65,25 @@ func (t *RecordingTransport) Publish(ctx context.Context, topic string, payload 
 	})
 	t.Rec.mu.Unlock()
 	return err
+}
+
+func (t *RecordingTransport) SetOnReconnect(fn func()) {
+	if ra, ok := t.Inner.(navlink.ReconnectAware); ok {
+		ra.SetOnReconnect(fn)
+	}
+}
+
+func (t *RecordingTransport) SetOnConnectionLost(fn func(error)) {
+	if la, ok := t.Inner.(navlink.ConnectionLostAware); ok {
+		la.SetOnConnectionLost(fn)
+	}
+}
+
+func (t *RecordingTransport) Connected() bool {
+	if cs, ok := t.Inner.(navlink.ConnectionStatus); ok {
+		return cs.Connected()
+	}
+	return false
 }
 
 func (t *RecordingTransport) Subscribe(ctx context.Context, filter string, handler navlink.RawHandler) (navlink.Unsubscribe, error) {

@@ -12,6 +12,8 @@ Implements `navlink.Transport`:
 | `Publish` / `Subscribe` | Client 正常出站 / 订阅 |
 | `Published()` | 断言 master 发出的报文 |
 | `Filters()` | 断言当前订阅 filter |
+| `FailNextPublish(err)` | 下一发出站直接失败（测 DefinitelyNotStarted） |
+| `HangNextPublish(d)` | 下一发出站挂起（测 Uncertain / 超时） |
 
 ```go
 broker := testkit.NewFakeBroker()
