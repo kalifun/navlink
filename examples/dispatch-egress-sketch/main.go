@@ -1,7 +1,5 @@
-// Dispatch egress sketch: GetNext → fill → Publish → Record only if PublishAccepted.
-//
-// This is documentation-as-code for new warehouses. The "ledger" is in-memory;
-// real dispatchers swap in their own ID watermark / unique-publish bookkeeping.
+// Dispatch egress sketch: GetNext → fill → Publish → Record / return / fence
+// from ClassifyPublish. Timeout is Uncertain — same IDs must not be reused.
 package main
 
 import (
@@ -51,38 +49,39 @@ func publishOrderOnce(ctx context.Context, client *navlink.Client, ledger *fakeL
 	ord.HeaderId = headerID
 
 	res, err := client.AGV(mfr, sn).PublishOrder(ctx, ord)
-	switch {
-	case navlink.PublishAccepted(err):
-		// MQTT QoS handshake OK — not "vehicle accepted order".
+	switch navlink.ClassifyPublish(err) {
+	case navlink.PublishOutcomeAccepted:
 		ledger.RecordSuccessfulPublish(mfr, sn, orderID, res.HeaderID, res.OrderUpdateID)
 		return nil
-	case navlink.IsPublishValidationFailed(err):
-		// Bad packet: fix fields; do not bump watermark / do not Record.
-		return fmt.Errorf("validation: %w", err)
-	case navlink.IsPublishNotStarted(err):
-		return fmt.Errorf("client not ready: %w", err)
-	case navlink.IsPublishTimeout(err), navlink.IsPublishCanceled(err), navlink.IsPublishBrokerRejected(err):
-		// Same IDs may be retried — ledger was not advanced on Record.
-		return fmt.Errorf("transport (retry same ids header=%d update=%d): %w", headerID, updateID, err)
+	case navlink.PublishOutcomeNotStarted:
+		return fmt.Errorf("not started (same ids reusable header=%d update=%d): %w", headerID, updateID, err)
+	case navlink.PublishOutcomeUncertain:
+		ledger.Fence(headerID, updateID)
+		return fmt.Errorf("uncertain (do not reuse header=%d update=%d): %w", headerID, updateID, err)
 	default:
 		return err
 	}
 }
 
-// fakeLedger stands in for dispatcher ID bookkeeping.
 type fakeLedger struct {
 	nextHeader uint32
 	nextUpdate uint32
 	recorded   []string
+	fenced     []string
 }
 
 func (l *fakeLedger) GetNext(mfr, sn, orderID string) (headerID, orderUpdateID uint32) {
-	h, u := l.nextHeader, l.nextUpdate
-	return h, u
+	return l.nextHeader, l.nextUpdate
 }
 
 func (l *fakeLedger) RecordSuccessfulPublish(mfr, sn, orderID string, headerID, orderUpdateID uint32) {
 	l.recorded = append(l.recorded, fmt.Sprintf("%s/%s %s h=%d u=%d", mfr, sn, orderID, headerID, orderUpdateID))
+	l.nextHeader = headerID + 1
+	l.nextUpdate = orderUpdateID + 1
+}
+
+func (l *fakeLedger) Fence(headerID, orderUpdateID uint32) {
+	l.fenced = append(l.fenced, fmt.Sprintf("h=%d u=%d", headerID, orderUpdateID))
 	l.nextHeader = headerID + 1
 	l.nextUpdate = orderUpdateID + 1
 }

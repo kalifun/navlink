@@ -12,20 +12,29 @@ import (
 	"github.com/kalifun/navlink"
 )
 
-// Central wiring: L1 protocol events + platform-prefixed custom events.
+// Central wiring: typed On* for VDA (L1). Platform/domain events use a separate bus.
+// Do not UseEventBus(fleetBus) — a shared synchronous bus serializes protocol
+// handlers with fleet.robot.* and can deadlock.
 func main() {
+	platformBus := navlink.NewMemoryEventBus()
+
 	client, err := navlink.New(navlink.Config{
 		Broker:    env("NAVLINK_BROKER", "tcp://localhost:1883"),
 		ClientID:  env("NAVLINK_CLIENT_ID", "navlink-platform-wiring"),
 		Interface: env("NAVLINK_INTERFACE", "uagv"),
 		Version:   env("NAVLINK_VERSION", "v2"),
-		Bus:       navlink.NewMemoryEventBus(),
+		OnDecodeError: func(env navlink.Envelope, err error) {
+			fmt.Printf("L1 decode failed topic=%s err=%v\n", env.Topic, err)
+		},
+		OnHandlerError: func(env navlink.Envelope, err error) {
+			fmt.Printf("L1 handler error topic=%s err=%v\n", env.Topic, err)
+		},
 	})
 	if err != nil {
 		fatal(err)
 	}
 
-	wire(client)
+	wire(client, platformBus)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
@@ -36,31 +45,21 @@ func main() {
 	<-ctx.Done()
 }
 
-func wire(client *navlink.Client) {
-	// L1 — library protocol events (via typed On* → bus).
+func wire(client *navlink.Client, platformBus navlink.EventBus) {
+	_, _ = platformBus.Subscribe("rcs.ingress.state_seen", func(ctx context.Context, payload any) error {
+		fmt.Printf("platform handler: %v\n", payload)
+		return nil
+	})
+
 	client.OnState(func(ctx context.Context, env navlink.Envelope, st *state.State) error {
 		fmt.Printf("L1 state serial=%s lastNode=%s\n", env.AGV.SerialNumber, st.LastNodeId)
-		// Platform-derived event (L3); navlink does not interpret the name.
-		return client.Emit("rcs.ingress.state_seen", map[string]any{
+		return platformBus.Publish(ctx, "rcs.ingress.state_seen", map[string]any{
 			"serial": env.AGV.SerialNumber,
 			"node":   st.LastNodeId,
 		})
 	})
 	client.OnConnection(func(ctx context.Context, env navlink.Envelope, c *connection.Connection) error {
 		fmt.Printf("L1 connection serial=%s state=%s\n", env.AGV.SerialNumber, c.ConnectionState)
-		return nil
-	})
-
-	// L1 decode failures.
-	_, _ = client.Subscribe(navlink.EventDecodeFailed, func(ctx context.Context, payload any) error {
-		ev := payload.(navlink.DecodeFailedEvent)
-		fmt.Printf("L1 decode failed topic=%s err=%v\n", ev.Envelope.Topic, ev.Err)
-		return nil
-	})
-
-	// Platform custom event (example consumer).
-	_, _ = client.Subscribe("rcs.ingress.state_seen", func(ctx context.Context, payload any) error {
-		fmt.Printf("platform handler: %v\n", payload)
 		return nil
 	})
 }

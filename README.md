@@ -38,7 +38,7 @@ defer client.Stop(ctx)
 ```bash
 go run ./examples/subscribe-state
 go run ./examples/platform-wiring          # 集中注册 L1 + 平台自定义事件
-go run ./examples/dispatch-egress-sketch   # 调度出站竖切：PublishAccepted 才 Record
+go run ./examples/dispatch-egress-sketch   # 调度出站竖切：ClassifyPublish 三态
 ```
 
 ## 布局
@@ -71,13 +71,16 @@ make check   # generr + fmt + vet + test
 
 ```go
 res, err := client.AGV(mfr, sn).PublishOrder(ctx, ord)
-if navlink.PublishAccepted(err) {
-    // 仅表示 MQTT QoS 握手成功（broker 收下），不是「车已接受 order」
-    // 车侧仍靠 state 观察；此时平台可 RecordSuccessfulPublish
-    _ = res.Topic // res.Payload / HeaderID / OrderUpdateID …
+switch navlink.ClassifyPublish(err) {
+case navlink.PublishOutcomeAccepted:
+    // MQTT QoS handshake OK (broker accepted) — not "vehicle accepted order"
+    _ = res.Topic
+case navlink.PublishOutcomeNotStarted:
+    // IDs may be reused
+case navlink.PublishOutcomeUncertain:
+    // timeout / cancel after send: do not reuse IDs
 }
-// 失败可区分：IsPublishNotStarted / IsPublishTimeout / IsPublishCanceled /
-// IsPublishQoSRejected / IsPublishBrokerRejected / IsPublishValidationFailed
+// predicates still available for logs: IsPublishNotStarted / IsPublishTimeout / …
 ```
 
 默认在 Publish 前做**轻量校验**（不分配 ID）：`headerId==0`、空 `orderId`、
@@ -97,6 +100,7 @@ if navlink.PublishAccepted(err) {
 navlink 是协议 **执行端**，**不做**也不逐渐滑向：
 
 - `headerId` / `orderUpdateId` / `actionId` 分配与水位（属调度编排）
+- UNCERTAIN fencing / 连续性重发策略（库只分类，不 fence）
 - ID 拒收恢复、completion、unique-publish 业务门闸
 - 选车、任务分解、RHCR、交管、充电、completion / grant 等业务判定
 - 跨进程中台、默认 Redis EventBus、多租户协议网关

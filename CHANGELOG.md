@@ -1,11 +1,36 @@
 # Changelog
 
-## Unreleased
+## 0.7.0 — 2026-08-20
 
-### Intentionally deferred
+Production MQTT and execution visibility.
 
-Connection observability, testkit publish-failure injection, JSONL replay, metrics
-hooks, AGV-side sim helpers — see README「非目标」and PRODUCT_SPEC backlog.
+### Added
+
+- MQTT connection surface: optional `tls.Config`, `ConnectTimeout`, last will,
+  `Client.Connected()`, `OnTransportUp` / `OnTransportDown`,
+  `OnSubscriptionsRestored` (reconnect subscribe success/failure).
+- `Config.QoS` is `*byte` (`QoSOf`). nil defaults order/instantActions publish
+  to QoS 1 and visualization subscribe to 0; a pointer to 0 is real QoS 0.
+- Inbound MQTT messages are dispatched off the paho callback (bounded queue;
+  visualization may drop when full). `OnHandlerError` / `OnInboundDrop`.
+- `ClassifyPublish` → `Accepted` / `NotStarted` / `Uncertain`.
+  `MarkPublishAttempted` for transports. FakeBroker `FailNextPublish` /
+  `HangNextPublish`.
+- `examples/dispatch-egress-sketch` uses three-way outcomes (timeout is uncertain).
+- `examples/platform-wiring` keeps VDA `On*` off the platform event bus.
+
+### Changed
+
+- MQTT `Publish` no longer treats QoS 0 as “use default”, and does not hold the
+  transport lock while waiting for a token.
+- Unset `Config.QoS` now publishes order/instantActions at QoS 1 (was QoS 0).
+- Token wait uses `WaitTimeout` so a timed-out wait does not leak a `Wait()`
+  goroutine.
+
+### Intentionally out of scope
+
+See README「非目标」。InstantAction helpers, async EventBus, JSONL replay, and
+AGV-side sim APIs are not in this release.
 
 ## 0.6.0 — 2026-07-21
 
@@ -43,3 +68,4 @@ Execution-endpoint baseline for dispatcher / sim wiring.
 ### Intentionally out of scope
 
 See README「非目标」。
+
