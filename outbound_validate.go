@@ -13,11 +13,11 @@ import (
 
 // Outbound validation reason keys (metadata "reason" on OutboundValidationFailed).
 const (
-	ReasonHeaderIDZero       = "headerId_zero"
-	ReasonOrderIDEmpty       = "orderId_empty"
-	ReasonOrderUpdateIDZero  = "orderUpdateId_zero"
-	ReasonActionIDEmpty      = "actionId_empty"
-	ReasonIdentityMismatch   = "identity_mismatch"
+	ReasonHeaderIDZero      = "headerId_zero"
+	ReasonOrderIDEmpty      = "orderId_empty"
+	ReasonOrderUpdateIDZero = "orderUpdateId_zero"
+	ReasonActionIDEmpty     = "actionId_empty"
+	ReasonIdentityMismatch  = "identity_mismatch"
 )
 
 // OutboundValidation configures light pre-publish checks (no ID allocation).

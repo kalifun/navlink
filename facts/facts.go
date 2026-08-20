@@ -28,10 +28,10 @@ type Fact struct {
 	NextOrderUpdateID uint32
 
 	// ActionTransitioned
-	ActionID     string
-	PrevStatus   state.ActionStatus
-	NextStatus   state.ActionStatus
-	ActionType   string
+	ActionID   string
+	PrevStatus state.ActionStatus
+	NextStatus state.ActionStatus
+	ActionType string
 }
 
 // Apply diffs prev → next and returns protocol facts only.
