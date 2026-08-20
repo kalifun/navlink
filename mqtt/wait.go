@@ -12,8 +12,8 @@ import (
 const defaultTokenWait = 30 * time.Second
 
 // waitToken waits for an MQTT token, honoring ctx cancel/deadline.
-// Returns TimeoutError when the default/absolute wait elapses without ctx error;
-// otherwise returns ctx.Err() when the context ends first.
+// The paho WaitTimeout goroutine always finishes within timeout, so a
+// timed-out or canceled wait does not leak a token.Wait() goroutine.
 func waitToken(ctx context.Context, token pahomqtt.Token) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -30,24 +30,23 @@ func waitToken(ctx context.Context, token pahomqtt.Token) error {
 		}
 	}
 
-	done := make(chan struct{})
+	type outcome struct {
+		completed bool
+		err       error
+	}
+	done := make(chan outcome, 1)
 	go func() {
-		token.Wait()
-		close(done)
+		ok := token.WaitTimeout(timeout)
+		done <- outcome{completed: ok, err: token.Error()}
 	}()
 
-	timer := time.NewTimer(timeout)
-	defer timer.Stop()
-
 	select {
-	case <-done:
+	case r := <-done:
+		if !r.completed {
+			return gerrors.TimeoutError
+		}
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-timer.C:
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		return gerrors.TimeoutError
 	}
 }
