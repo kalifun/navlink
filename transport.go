@@ -28,3 +28,13 @@ type Transport interface {
 type ReconnectAware interface {
 	SetOnReconnect(fn func())
 }
+
+// ConnectionStatus reports whether the transport is currently connected.
+type ConnectionStatus interface {
+	Connected() bool
+}
+
+// ConnectionLostAware is implemented by transports that can signal unexpected disconnects.
+type ConnectionLostAware interface {
+	SetOnConnectionLost(fn func(error))
+}

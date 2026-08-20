@@ -69,31 +69,38 @@ func (c *Client) onRawMessage(ctx context.Context, rawTopic string, payload []by
 			c.reportDecode(ctx, env, gerrors.NewDecodeFailedWithArgs(err.Error()))
 			return nil
 		}
-		return c.invokeState(ctx, env, &msg)
+		return c.finishHandler(env, c.invokeState(ctx, env, &msg))
 	case topic.ChannelConnection:
 		var msg connection.Connection
 		if err := json.Unmarshal(payload, &msg); err != nil {
 			c.reportDecode(ctx, env, gerrors.NewDecodeFailedWithArgs(err.Error()))
 			return nil
 		}
-		return c.invokeConnection(ctx, env, &msg)
+		return c.finishHandler(env, c.invokeConnection(ctx, env, &msg))
 	case topic.ChannelVisualization:
 		var msg visualization.Visualization
 		if err := json.Unmarshal(payload, &msg); err != nil {
 			c.reportDecode(ctx, env, gerrors.NewDecodeFailedWithArgs(err.Error()))
 			return nil
 		}
-		return c.invokeVisualization(ctx, env, &msg)
+		return c.finishHandler(env, c.invokeVisualization(ctx, env, &msg))
 	case topic.ChannelFactsheet:
 		var msg factsheet.Factsheet
 		if err := json.Unmarshal(payload, &msg); err != nil {
 			c.reportDecode(ctx, env, gerrors.NewDecodeFailedWithArgs(err.Error()))
 			return nil
 		}
-		return c.invokeFactsheet(ctx, env, &msg)
+		return c.finishHandler(env, c.invokeFactsheet(ctx, env, &msg))
 	default:
 		return nil
 	}
+}
+
+func (c *Client) finishHandler(env Envelope, err error) error {
+	if err != nil {
+		c.reportHandlerError(env, err)
+	}
+	return err
 }
 
 func (c *Client) dispatchTopic(ctx context.Context, rawTopic string, payload []byte, h TopicHandler) error {
@@ -110,7 +117,7 @@ func (c *Client) dispatchTopic(ctx context.Context, rawTopic string, payload []b
 			env.RobotID = c.cfg.IdentityMapper(parsed.Manufacturer, parsed.SerialNumber)
 		}
 	}
-	return h(ctx, env)
+	return c.finishHandler(env, h(ctx, env))
 }
 
 func (c *Client) checkIdentity(env Envelope) error {

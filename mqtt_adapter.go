@@ -2,6 +2,7 @@ package navlink
 
 import (
 	"context"
+	"errors"
 
 	"github.com/kalifun/navlink/mqtt"
 )
@@ -24,7 +25,12 @@ func (t *mqttTransport) Stop(ctx context.Context) error {
 }
 
 func (t *mqttTransport) Publish(ctx context.Context, topic string, payload []byte, opts PublishOptions) error {
-	return t.inner.Publish(ctx, topic, payload, opts.QoS, opts.Retain)
+	err := t.inner.Publish(ctx, topic, payload, opts.QoS, opts.Retain)
+	var att *mqtt.AttemptedError
+	if errors.As(err, &att) {
+		return MarkPublishAttempted(att.Err)
+	}
+	return err
 }
 
 func (t *mqttTransport) Subscribe(ctx context.Context, filter string, handler RawHandler) (Unsubscribe, error) {
@@ -37,4 +43,12 @@ func (t *mqttTransport) Subscribe(ctx context.Context, filter string, handler Ra
 
 func (t *mqttTransport) SetOnReconnect(fn func()) {
 	t.inner.SetOnReconnect(fn)
+}
+
+func (t *mqttTransport) SetOnConnectionLost(fn func(error)) {
+	t.inner.SetOnConnectionLost(fn)
+}
+
+func (t *mqttTransport) Connected() bool {
+	return t.inner.Connected()
 }

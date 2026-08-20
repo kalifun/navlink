@@ -45,7 +45,7 @@ func (a *AGVHandle) PublishOrder(ctx context.Context, o *order.Order) (PublishRe
 	if err != nil {
 		return res, err
 	}
-	qos := a.client.cfg.qos()
+	qos := a.client.cfg.publishQoS()
 	if err := validatePublishQoS(qos); err != nil {
 		return res, err
 	}
@@ -87,7 +87,7 @@ func (a *AGVHandle) PublishInstantActions(ctx context.Context, ia *instant_actio
 	if err != nil {
 		return res, err
 	}
-	qos := a.client.cfg.qos()
+	qos := a.client.cfg.publishQoS()
 	if err := validatePublishQoS(qos); err != nil {
 		return res, err
 	}

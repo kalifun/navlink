@@ -23,9 +23,9 @@ type Client struct {
 	extensions *extend.Registry
 	bus        EventBus
 
-	mu      sync.RWMutex
-	started bool
-	unsubs  []Unsubscribe
+	mu        sync.RWMutex
+	started   bool
+	unsubs    []Unsubscribe
 	busUnsubs []Unsubscribe
 
 	wantState bool
@@ -38,6 +38,11 @@ type Client struct {
 	vizHandlers   []VisualizationHandler
 	fsHandlers    []FactsheetHandler
 	topicHandlers []topicSub
+
+	onTransportUp           func()
+	onTransportDown         func(error)
+	onHandlerError          HandlerErrorHandler
+	onSubscriptionsRestored func(error)
 }
 
 type topicSub struct {
@@ -57,9 +62,13 @@ func New(cfg Config) (*Client, error) {
 			Interface: cfg.Interface,
 			Version:   cfg.Version,
 		},
-		builder:    outbound.NewBuilder(cfg.headerVersion()),
-		extensions: cfg.Extensions,
-		bus:        cfg.Bus,
+		builder:                 outbound.NewBuilder(cfg.headerVersion()),
+		extensions:              cfg.Extensions,
+		bus:                     cfg.Bus,
+		onTransportUp:           cfg.OnTransportUp,
+		onTransportDown:         cfg.OnTransportDown,
+		onHandlerError:          cfg.OnHandlerError,
+		onSubscriptionsRestored: cfg.OnSubscriptionsRestored,
 	}
 
 	if cfg.Transport != nil {
@@ -69,15 +78,31 @@ func New(cfg Config) (*Client, error) {
 		if keepAlive == 0 {
 			keepAlive = 30 * time.Second
 		}
+		subQoS, explicit := cfg.subscribeQoSExplicit()
+		var will *mqtt.Will
+		if cfg.Will != nil {
+			will = &mqtt.Will{
+				Topic:   cfg.Will.Topic,
+				Payload: cfg.Will.Payload,
+				QoS:     cfg.Will.QoS,
+				Retain:  cfg.Will.Retain,
+			}
+		}
 		c.transport = newMQTTTransport(mqtt.Config{
-			Broker:        cfg.Broker,
-			ClientID:      cfg.ClientID,
-			Username:      cfg.Username,
-			Password:      cfg.Password,
-			QoS:           cfg.qos(),
-			KeepAlive:     keepAlive,
-			CleanSession:  cfg.CleanSession,
-			AutoReconnect: cfg.AutoReconnect,
+			Broker:           cfg.Broker,
+			ClientID:         cfg.ClientID,
+			Username:         cfg.Username,
+			Password:         cfg.Password,
+			QoS:              subQoS,
+			QoSExplicit:      explicit,
+			KeepAlive:        keepAlive,
+			ConnectTimeout:   cfg.ConnectTimeout,
+			CleanSession:     cfg.CleanSession,
+			AutoReconnect:    cfg.AutoReconnect,
+			TLS:              cfg.TLS,
+			Will:             will,
+			InboundQueueSize: cfg.InboundQueueSize,
+			OnInboundDrop:    cfg.OnInboundDrop,
 		})
 	}
 
@@ -93,6 +118,11 @@ func New(cfg Config) (*Client, error) {
 		if ra, ok := c.transport.(ReconnectAware); ok {
 			ra.SetOnReconnect(c.handleReconnect)
 		}
+	}
+	if la, ok := c.transport.(ConnectionLostAware); ok {
+		la.SetOnConnectionLost(func(err error) {
+			c.emitTransportDown(err)
+		})
 	}
 
 	return c, nil
@@ -234,21 +264,28 @@ func (c *Client) AGV(manufacturer, serial string) *AGVHandle {
 // Start connects the transport and establishes subscriptions for registered handlers.
 func (c *Client) Start(ctx context.Context) error {
 	c.mu.Lock()
-	defer c.mu.Unlock()
 
 	if c.started {
+		c.mu.Unlock()
 		return gerrors.ClientAlreadyStarted
 	}
 	if err := c.transport.Start(ctx); err != nil {
+		c.mu.Unlock()
 		return err
 	}
 
 	if err := c.subscribeLocked(ctx); err != nil {
 		_ = c.transport.Stop(ctx)
+		c.mu.Unlock()
 		return err
 	}
 
 	c.started = true
+	up := c.onTransportUp
+	c.mu.Unlock()
+	if up != nil {
+		up()
+	}
 	return nil
 }
 
@@ -367,16 +404,88 @@ func (c *Client) handleReconnect() {
 	fleet := c.fleet
 	c.mu.Unlock()
 
+	var restoreErr error
 	if fleet != nil {
-		_ = fleet.Restore(ctx)
+		restoreErr = fleet.Restore(ctx)
 	}
 
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	if !c.started {
+		c.mu.Unlock()
 		return
 	}
-	_ = c.subscribeLocked(ctx)
+	if restoreErr == nil {
+		restoreErr = c.subscribeLocked(ctx)
+	}
+	up := c.onTransportUp
+	restored := c.onSubscriptionsRestored
+	c.mu.Unlock()
+
+	if restored != nil {
+		restored(restoreErr)
+	}
+	if restoreErr == nil && up != nil {
+		up()
+	}
+}
+
+// Connected reports whether the transport currently has an MQTT connection.
+func (c *Client) Connected() bool {
+	if cs, ok := c.transport.(ConnectionStatus); ok {
+		return cs.Connected()
+	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.started
+}
+
+// OnTransportUp registers a callback after a successful connect or restore.
+func (c *Client) OnTransportUp(h func()) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.onTransportUp = h
+}
+
+// OnTransportDown registers a callback for unexpected transport disconnects.
+func (c *Client) OnTransportDown(h func(error)) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.onTransportDown = h
+}
+
+// OnHandlerError registers a callback when a typed/raw inbound handler returns an error.
+func (c *Client) OnHandlerError(h HandlerErrorHandler) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.onHandlerError = h
+}
+
+// OnSubscriptionsRestored registers a callback after reconnect subscription restore.
+func (c *Client) OnSubscriptionsRestored(h func(error)) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.onSubscriptionsRestored = h
+}
+
+func (c *Client) emitTransportDown(err error) {
+	c.mu.RLock()
+	h := c.onTransportDown
+	c.mu.RUnlock()
+	if h != nil {
+		h(err)
+	}
+}
+
+func (c *Client) reportHandlerError(env Envelope, err error) {
+	if err == nil {
+		return
+	}
+	c.mu.RLock()
+	h := c.onHandlerError
+	c.mu.RUnlock()
+	if h != nil {
+		h(env, err)
+	}
 }
 
 func (c *Client) subscriptionFilter(ch topic.Channel) string {

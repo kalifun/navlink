@@ -26,3 +26,6 @@ type TopicHandler func(ctx context.Context, env Envelope) error
 
 // DecodeErrorHandler observes decode/identity failures without crashing the process.
 type DecodeErrorHandler func(env Envelope, err error)
+
+// HandlerErrorHandler observes inbound handler errors without crashing the process.
+type HandlerErrorHandler func(env Envelope, err error)

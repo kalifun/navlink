@@ -1,6 +1,7 @@
 package navlink
 
 import (
+	"crypto/tls"
 	"strings"
 	"time"
 
@@ -8,6 +9,24 @@ import (
 	"github.com/kalifun/navlink/gerrors"
 	"github.com/kalifun/navlink/session"
 )
+
+// DefaultOrderQoS is used for order / instantActions (and non-viz subscribe)
+// when Config.QoS is nil.
+const DefaultOrderQoS byte = 1
+
+// QoSOf returns a pointer for Config.QoS. Passing 0 means real MQTT QoS 0.
+func QoSOf(q byte) *byte {
+	v := q
+	return &v
+}
+
+// LastWill is an MQTT last-will message (optional).
+type LastWill struct {
+	Topic   string
+	Payload []byte
+	QoS     byte
+	Retain  bool
+}
 
 // Config configures a navlink Client.
 type Config struct {
@@ -35,10 +54,23 @@ type Config struct {
 	Manufacturer string
 	SerialNumber string
 
-	QoS           byte
-	KeepAlive     time.Duration
-	CleanSession  bool
-	AutoReconnect bool
+	// QoS is the MQTT QoS for publishes and subscriptions.
+	// nil = library defaults (order/instantActions publish 1; visualization subscribe 0).
+	// A pointer to 0 is a real QoS 0 (not "unset").
+	QoS *byte
+
+	KeepAlive      time.Duration
+	ConnectTimeout time.Duration
+	CleanSession   bool
+	AutoReconnect  bool
+	TLS            *tls.Config
+	Will           *LastWill
+
+	// InboundQueueSize is the paho-callback → worker queue length (default 256).
+	InboundQueueSize int
+	// OnInboundDrop is called when the inbound queue is full (viz may be dropped;
+	// state/connection back-pressure after this hook).
+	OnInboundDrop func(topic string)
 
 	// RestoreSubscriptionsOnReconnect re-subscribes VDA topics after MQTT reconnect.
 	// Default true. Applies when the transport implements ReconnectAware (built-in MQTT,
@@ -76,6 +108,12 @@ type Config struct {
 
 	// OnDecodeError is called when decode or identity checks fail.
 	OnDecodeError DecodeErrorHandler
+	// OnHandlerError is called when a typed/raw handler returns an error.
+	OnHandlerError  HandlerErrorHandler
+	OnTransportUp   func()
+	OnTransportDown func(error)
+	// OnSubscriptionsRestored is called after reconnect restore (nil err = success).
+	OnSubscriptionsRestored func(error)
 }
 
 func (c Config) headerVersion() string {
@@ -114,12 +152,24 @@ func (c Config) validate() error {
 			return gerrors.NewInvalidConfigWithArgs("ClientID is required when Transport is nil")
 		}
 	}
+	if c.Will != nil {
+		if strings.TrimSpace(c.Will.Topic) == "" || c.Will.QoS > 2 {
+			return gerrors.WillMessageError
+		}
+	}
 	return nil
 }
 
-func (c Config) qos() byte {
-	if c.QoS == 0 {
-		return 0
+func (c Config) publishQoS() byte {
+	if c.QoS == nil {
+		return DefaultOrderQoS
 	}
-	return c.QoS
+	return *c.QoS
+}
+
+func (c Config) subscribeQoSExplicit() (qos byte, explicit bool) {
+	if c.QoS == nil {
+		return DefaultOrderQoS, false
+	}
+	return *c.QoS, true
 }
