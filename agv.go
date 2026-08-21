@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 
-	vda5050 "github.com/kalifun/vda5050-types-go"
 	"github.com/kalifun/vda5050-types-go/instant_actions"
 	"github.com/kalifun/vda5050-types-go/order"
 
@@ -111,23 +110,4 @@ func (a *AGVHandle) PublishInstantActions(ctx context.Context, ia *instant_actio
 		return res, err
 	}
 	return res, nil
-}
-
-// CancelOrder publishes a standard cancelOrder instantAction.
-// actionID and headerID must be supplied by the caller (orchestration layer).
-func (a *AGVHandle) CancelOrder(ctx context.Context, headerID uint32, actionID string) (PublishResult, error) {
-	if actionID == "" {
-		return PublishResult{}, gerrors.NewInvalidConfigWithArgs("actionId is required")
-	}
-	ia := &instant_actions.InstantActions{
-		Actions: []instant_actions.InstantAction{
-			{
-				ActionType:   "cancelOrder",
-				ActionId:     actionID,
-				BlockingType: vda5050.Hard,
-			},
-		},
-	}
-	ia.HeaderId = headerID
-	return a.PublishInstantActions(ctx, ia)
 }

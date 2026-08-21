@@ -87,6 +87,11 @@ case navlink.PublishOutcomeUncertain:
 `orderUpdateId==0`、空 `actionId`、与 `AGVHandle` 身份不一致 → `OutboundValidationFailed`。
 可用 `Config.OutboundValidation` 关闭或放宽。
 
+标准瞬时动作有 helper（`CancelOrder`、`StartPause` / `StopPause`、
+`InitPosition`、`StateRequest`、`FactsheetRequest`，以及无参的官方
+`StartCharging` / `StopCharging`）。调用方仍填 `headerId` / `actionId`。
+厂商动作或额外参数继续用 `PublishInstantActions`。
+
 可选 `Config.InboundPolicy`（如 `NewHeaderSequencePolicy()`）按 headerId 标注
 `Accept|Stale|Duplicate` 到 `Envelope.InboundDisposition` / Meta；**默认不丢包**。
 

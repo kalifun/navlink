@@ -7,6 +7,7 @@ import (
 
 	"github.com/kalifun/navlink"
 	"github.com/kalifun/navlink/testkit"
+	"github.com/kalifun/vda5050-types-go"
 )
 
 func TestCancelOrderPublishesInstantAction(t *testing.T) {
@@ -48,7 +49,7 @@ func TestCancelOrderPublishesInstantAction(t *testing.T) {
 		t.Fatalf("actions=%v", body["actions"])
 	}
 	a0 := actions[0].(map[string]any)
-	if a0["actionType"] != "cancelOrder" || a0["actionId"] != "act-1" {
+	if a0["actionType"] != vda5050.ActionCancelOrder || a0["actionId"] != "act-1" {
 		t.Fatalf("action=%v", a0)
 	}
 }

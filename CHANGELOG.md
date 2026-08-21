@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.8.0 — 2026-08-21
+
+Standard InstantAction helpers (protocol convenience, not scheduling).
+
+### Added
+
+- `AGVHandle` helpers for official VDA5050 instant actions: `StartPause`,
+  `StopPause`, `InitPosition`, `StateRequest`, `FactsheetRequest`, and
+  parameter-less `StartCharging` / `StopCharging`. Callers still supply
+  `headerId` / `actionId`; results go through `PublishInstantActions` and
+  `ClassifyPublish`.
+- `InitPositionParams` matches the spec keys only: `x`, `y`, `theta`,
+  `mapId`, `lastNodeId`.
+
+### Changed
+
+- `CancelOrder` uses `vda5050.ActionCancelOrder` from types-go v0.6.0
+  (same on-wire string).
+
+### Intentionally out of scope
+
+OEM `actionType` (use `PublishInstantActions`), ID allocation, when to
+pause/charge, async EventBus, `logReport`, 2.1 map actions, JSONL replay,
+AGV-side sim APIs.
+
 ## 0.7.0 — 2026-08-20
 
 Production MQTT and execution visibility.
