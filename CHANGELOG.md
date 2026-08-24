@@ -1,13 +1,23 @@
 # Changelog
 
-## Unreleased
+## 0.9.0 — 2026-08-24
+
+Public API surface: this library is consumed as `Client`, not as a bag of
+transport packages. Replay / metrics / sim helpers move to **v0.10**.
+
+### Added
+
+- MIT license.
 
 ### Changed
 
+- README is written as a standalone VDA5050 SDK (install + usage), without
+  in-house product names.
 - MQTT transport, outbound builder, in-process bus, fleet session, and generated
   error codes live under `internal/`. Import `navlink`, `extend`, `topic`,
-  `facts`, or `testkit`. Fleet config is `Config.Fleet *FleetOptions`
-  (`DefaultFleetOptions()`), not `session.Options`.
+  `facts`, or `testkit`.
+- Fleet config is `Config.Fleet *FleetOptions` (`DefaultFleetOptions()`),
+  not `session.Options`.
 
 ## 0.8.0 — 2026-08-21
 

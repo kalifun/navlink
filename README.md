@@ -7,7 +7,7 @@ Go 语言 **VDA5050 MQTT 接入 SDK**：一个 `Client` 完成主题、强类型
 ## 安装
 
 ```bash
-go get github.com/kalifun/navlink@v0.8.0
+go get github.com/kalifun/navlink@v0.9.0
 ```
 
 需要 Go 1.25+。
