@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/kalifun/navlink/gerrors"
+	"github.com/kalifun/navlink/internal/gerrors"
 	"github.com/kalifun/navlink/topic"
 )
 

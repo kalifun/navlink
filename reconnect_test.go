@@ -7,7 +7,6 @@ import (
 	"github.com/kalifun/vda5050-types-go/state"
 
 	"github.com/kalifun/navlink"
-	"github.com/kalifun/navlink/session"
 	"github.com/kalifun/navlink/testkit"
 )
 
@@ -44,7 +43,7 @@ func TestReconnectRestoresSubscriptions(t *testing.T) {
 
 func TestReconnectRestoresFleetTracked(t *testing.T) {
 	broker := testkit.NewFakeBroker()
-	opts := session.DefaultOptions()
+	opts := navlink.DefaultFleetOptions()
 	opts.AutoTrackFromConnection = false
 	client, err := navlink.New(navlink.Config{
 		Interface: "uagv",

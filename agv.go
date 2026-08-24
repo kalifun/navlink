@@ -7,7 +7,7 @@ import (
 	"github.com/kalifun/vda5050-types-go/instant_actions"
 	"github.com/kalifun/vda5050-types-go/order"
 
-	"github.com/kalifun/navlink/gerrors"
+	"github.com/kalifun/navlink/internal/gerrors"
 	"github.com/kalifun/navlink/topic"
 )
 

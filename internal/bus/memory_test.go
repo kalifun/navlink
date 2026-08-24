@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/kalifun/navlink/bus"
+	"github.com/kalifun/navlink/internal/bus"
 )
 
 func TestMemoryMultiSubscribeOrder(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	vda5050 "github.com/kalifun/vda5050-types-go"
 	"github.com/kalifun/vda5050-types-go/instant_actions"
 
-	"github.com/kalifun/navlink/gerrors"
+	"github.com/kalifun/navlink/internal/gerrors"
 )
 
 // InitPositionParams is the VDA5050 initPosition parameter set (2.0 / 2.1).

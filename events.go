@@ -8,7 +8,7 @@ import (
 	"github.com/kalifun/vda5050-types-go/state"
 	"github.com/kalifun/vda5050-types-go/visualization"
 
-	"github.com/kalifun/navlink/bus"
+	"github.com/kalifun/navlink/internal/bus"
 )
 
 // L1 protocol event names (stable; do not rename casually).

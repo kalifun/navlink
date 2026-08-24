@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/kalifun/navlink"
-	"github.com/kalifun/navlink/gerrors"
+	"github.com/kalifun/navlink/internal/gerrors"
 	"github.com/kalifun/vda5050-types-go/order"
 )
 

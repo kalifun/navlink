@@ -9,7 +9,7 @@ import (
 
 	pahomqtt "github.com/eclipse/paho.mqtt.golang"
 
-	"github.com/kalifun/navlink/gerrors"
+	"github.com/kalifun/navlink/internal/gerrors"
 )
 
 const defaultInboundQueue = 256

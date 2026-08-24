@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/kalifun/navlink/mqtt"
+	"github.com/kalifun/navlink/internal/mqtt"
 )
 
 // mqttTransport adapts mqtt.Transport to navlink.Transport without import cycles.

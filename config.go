@@ -6,9 +6,27 @@ import (
 	"time"
 
 	"github.com/kalifun/navlink/extend"
-	"github.com/kalifun/navlink/gerrors"
-	"github.com/kalifun/navlink/session"
+	"github.com/kalifun/navlink/internal/gerrors"
 )
+
+// FleetOptions configures per-AGV subscriptions when Config.Fleet is set.
+type FleetOptions struct {
+	// SubscribeState subscribes per-AGV state topics when tracked (default true).
+	SubscribeState bool
+	// SubscribeVisualization subscribes per-AGV visualization when tracked.
+	SubscribeVisualization bool
+	// AutoTrackFromConnection tracks on ONLINE and untracks on OFFLINE/CONNECTIONBROKEN.
+	AutoTrackFromConnection bool
+}
+
+// DefaultFleetOptions returns the recommended fleet defaults.
+func DefaultFleetOptions() FleetOptions {
+	return FleetOptions{
+		SubscribeState:          true,
+		SubscribeVisualization:  false,
+		AutoTrackFromConnection: true,
+	}
+}
 
 // DefaultOrderQoS is used for order / instantActions (and non-viz subscribe)
 // when Config.QoS is nil.
@@ -84,10 +102,10 @@ type Config struct {
 	// When nil, an MQTT transport is created from Broker settings.
 	Transport Transport
 
-	// Fleet enables FleetSession when non-nil.
-	// Pass &session.DefaultOptions() or a customized session.Options.
-	// An all-zero Options value is treated as DefaultOptions().
-	Fleet *session.Options
+	// Fleet enables fleet tracking when non-nil.
+	// Pass &DefaultFleetOptions() or a customized FleetOptions.
+	// An all-zero FleetOptions is treated as DefaultFleetOptions().
+	Fleet *FleetOptions
 
 	// Extensions fills Envelope.Meta from vendor fields (optional).
 	Extensions *extend.Registry

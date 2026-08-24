@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/kalifun/navlink"
-	"github.com/kalifun/navlink/gerrors"
+	"github.com/kalifun/navlink/internal/gerrors"
 )
 
 // PublishedMessage is one outbound message captured by FakeBroker.

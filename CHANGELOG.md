@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- MQTT transport, outbound builder, in-process bus, fleet session, and generated
+  error codes live under `internal/`. Import `navlink`, `extend`, `topic`,
+  `facts`, or `testkit`. Fleet config is `Config.Fleet *FleetOptions`
+  (`DefaultFleetOptions()`), not `session.Options`.
+
 ## 0.8.0 — 2026-08-21
 
 Standard InstantAction helpers (protocol convenience, not scheduling).

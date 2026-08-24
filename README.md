@@ -84,7 +84,7 @@ navlink 只做 **协议执行**，不做：
 
 VDA 收发走 `Client` / `AGV`；其它应用 MQTT 走 `Client.Transport()`。
 
-更多见 [CHANGELOG.md](CHANGELOG.md)、[outbound/README.md](outbound/README.md)。
+更多见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 开发
 
@@ -102,7 +102,7 @@ make check   # generr + fmt + vet + test
 make generr
 ```
 
-请勿手改 `gerrors/` 下的生成文件。
+请勿手改 `internal/gerrors/` 下的生成文件。
 
 ## License
 

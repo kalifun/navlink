@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/kalifun/navlink/extend"
-	"github.com/kalifun/navlink/gerrors"
-	"github.com/kalifun/navlink/mqtt"
-	"github.com/kalifun/navlink/outbound"
-	"github.com/kalifun/navlink/session"
+	"github.com/kalifun/navlink/internal/gerrors"
+	"github.com/kalifun/navlink/internal/mqtt"
+	"github.com/kalifun/navlink/internal/outbound"
+	"github.com/kalifun/navlink/internal/session"
 	"github.com/kalifun/navlink/topic"
 )
 
@@ -107,11 +107,7 @@ func New(cfg Config) (*Client, error) {
 	}
 
 	if cfg.Fleet != nil {
-		opts := *cfg.Fleet
-		if opts == (session.Options{}) {
-			opts = session.DefaultOptions()
-		}
-		c.fleet = session.NewFleetSession(c.topics, c.fleetSubscribe, opts)
+		c.fleet = session.NewFleetSession(c.topics, c.fleetSubscribe, fleetSessionOptions(*cfg.Fleet))
 	}
 
 	if cfg.restoreOnReconnect() {
@@ -507,4 +503,15 @@ func (c *Client) requireStarted() error {
 		return gerrors.ClientNotStarted
 	}
 	return nil
+}
+
+func fleetSessionOptions(fo FleetOptions) session.Options {
+	if fo == (FleetOptions{}) {
+		return session.DefaultOptions()
+	}
+	return session.Options{
+		SubscribeState:          fo.SubscribeState,
+		SubscribeVisualization:  fo.SubscribeVisualization,
+		AutoTrackFromConnection: fo.AutoTrackFromConnection,
+	}
 }

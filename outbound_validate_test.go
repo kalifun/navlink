@@ -8,7 +8,7 @@ import (
 	"github.com/kalifun/vda5050-types-go/order"
 
 	"github.com/kalifun/navlink"
-	"github.com/kalifun/navlink/gerrors"
+	"github.com/kalifun/navlink/internal/gerrors"
 )
 
 func TestOutboundValidationRejectsBadOrder(t *testing.T) {

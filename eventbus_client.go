@@ -3,7 +3,7 @@ package navlink
 import (
 	"context"
 
-	"github.com/kalifun/navlink/gerrors"
+	"github.com/kalifun/navlink/internal/gerrors"
 )
 
 // UseEventBus attaches a bus and migrates any already-registered On* handlers onto it.

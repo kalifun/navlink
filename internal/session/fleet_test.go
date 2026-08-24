@@ -7,7 +7,7 @@ import (
 
 	"github.com/kalifun/vda5050-types-go/connection"
 
-	"github.com/kalifun/navlink/session"
+	"github.com/kalifun/navlink/internal/session"
 	"github.com/kalifun/navlink/topic"
 )
 

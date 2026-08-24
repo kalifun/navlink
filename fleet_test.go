@@ -9,12 +9,11 @@ import (
 
 	"github.com/kalifun/navlink"
 	"github.com/kalifun/navlink/extend"
-	"github.com/kalifun/navlink/session"
 )
 
 func TestFleetSessionTracksOnConnectionOnline(t *testing.T) {
 	mem := &memoryTransport{}
-	opts := session.DefaultOptions()
+	opts := navlink.DefaultFleetOptions()
 	client, err := navlink.New(navlink.Config{
 		Interface: "uagv",
 		Version:   "v2",

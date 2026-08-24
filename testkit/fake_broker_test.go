@@ -10,7 +10,7 @@ import (
 	"github.com/kalifun/vda5050-types-go/state"
 
 	"github.com/kalifun/navlink"
-	"github.com/kalifun/navlink/gerrors"
+	"github.com/kalifun/navlink/internal/gerrors"
 	"github.com/kalifun/navlink/testkit"
 )
 

@@ -1,7 +1,7 @@
 .PHONY: generr test fmt vet tidy check
 
 generr:
-	glitch gen -y errors/*.yaml -p gerrors --out gerrors
+	glitch gen -y errors/*.yaml -p gerrors --out internal/gerrors
 
 test:
 	go test ./...
