@@ -9,8 +9,8 @@ type Meta map[string]any
 // Extractor pulls consumer-defined fields from a raw payload for a VDA channel.
 // Returning a nil/empty Meta is not an error.
 //
-// Vendor / OEM extractors belong in the consuming project (dispatcher, sim,
-// tool). navlink only provides the registration hook.
+// Vendor / OEM extractors belong in the consuming project.
+// navlink only provides the registration hook.
 type Extractor func(channel string, raw []byte) (Meta, error)
 
 // Registry runs registered extractors and merges Meta maps.

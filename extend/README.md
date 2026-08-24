@@ -5,7 +5,7 @@ navlink **不内置**任何厂商字段解析。`Registry` 只负责：
 1. 让消费方注册自己的 `Extractor`
 2. 入站时合并结果到 `Envelope.Meta`
 
-OEM / 厂商语义、错误码、处置策略都留在 dispatcher、rcs-sim 或工具侧。
+OEM / 厂商语义、错误码、处置策略都留在消费方。
 
 ## 最小用法
 

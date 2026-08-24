@@ -12,7 +12,7 @@ import (
 )
 
 // AGVHandle publishes typed outbound messages to one AGV.
-// Callers (dispatcher) must assign headerId / orderUpdateId / actionId before publish.
+// Callers must assign headerId / orderUpdateId / actionId before publish.
 type AGVHandle struct {
 	client       *Client
 	manufacturer string

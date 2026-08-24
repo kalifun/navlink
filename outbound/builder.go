@@ -14,7 +14,7 @@ const TimestampLayout = "2006-01-02T15:04:05.000Z"
 // Builder applies wire-format defaults for outbound VDA5050 messages.
 //
 // navlink is an execution endpoint: headerId / orderUpdateId / actionId are
-// owned by the caller (dispatcher). This builder only fills identity blanks,
+// owned by the caller. This builder only fills identity blanks,
 // ProtocolHeader.Version, and timestamp.
 type Builder struct {
 	Version string

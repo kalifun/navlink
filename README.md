@@ -1,35 +1,38 @@
 # navlink
 
-Go 语言下的 **VDA5050 协议接入 SDK**：同一套 API 完成 MQTT 连接、主题解析、强类型收发。
+Go 语言 **VDA5050 MQTT 接入 SDK**：一个 `Client` 完成主题、强类型入站回调、强类型出站发布。
 
-## 环境
+报文结构来自 [`vda5050-types-go`](https://github.com/kalifun/vda5050-types-go)，navlink 不另维护一份 schema。
 
-本仓库使用 **direnv + Nix flake**（`.envrc` → `github:kalifun/devshells#go-1_25`）。
-
-```bash
-direnv allow
-```
-
-错误码由 **glitch** 从 `errors/*.yaml` 生成：
+## 安装
 
 ```bash
-make generr
+go get github.com/kalifun/navlink@v0.8.0
 ```
 
-## Quick Start
+需要 Go 1.25+。
+
+## 快速开始
 
 ```go
 client, err := navlink.New(navlink.Config{
     Broker:    "tcp://localhost:1883",
-    ClientID:  "my-rcs",
+    ClientID:  "master-control",
     Interface: "uagv",
     Version:   "v2",
 })
+if err != nil {
+    log.Fatal(err)
+}
+
 client.OnState(func(ctx context.Context, env navlink.Envelope, st *state.State) error {
     fmt.Println(env.AGV.SerialNumber, st.LastNodeId)
     return nil
 })
-_ = client.Start(ctx)
+
+if err := client.Start(ctx); err != nil {
+    log.Fatal(err)
+}
 defer client.Stop(ctx)
 ```
 
@@ -37,82 +40,70 @@ defer client.Stop(ctx)
 
 ```bash
 go run ./examples/subscribe-state
-go run ./examples/platform-wiring          # 集中注册 L1 + 平台自定义事件
-go run ./examples/dispatch-egress-sketch   # 调度出站竖切：ClassifyPublish 三态
+go run ./examples/platform-wiring          # 协议 L1 事件 + 应用自定义事件
+go run ./examples/dispatch-egress-sketch   # ClassifyPublish 三态
 ```
 
-## 布局
+## 发布
 
-```text
-navlink/                 # Client 公共 API
-topic/                   # TopicResolver（唯一主题真相源）
-outbound/                # 出站执行辅助（version/timestamp；ID 由调度填写）
-session/                 # FleetSession（connection → per-AGV 订阅）
-extend/                  # ExtensionRegistry（开放钩子；见 extend/README.md）
-bus/                     # Memory EventBus
-facts/                   # 连续 State 的协议 Fact 投影（无调度语义）
-testkit/                 # FakeBroker / Recording（见 testkit/README.md）
-mqtt/                    # 字节级 MQTT transport（不懂 VDA）
-gerrors/                 # glitch 生成，勿手改
-errors/*.yaml            # 错误码源
-examples/subscribe-state
-examples/platform-wiring
-examples/dispatch-egress-sketch
-```
-
-## 开发
-
-```bash
-make test
-make check   # generr + fmt + vet + test
-```
-
-## 出站可见性（调度对接）
+`headerId` / `orderUpdateId` / `actionId` 由调用方填写。库只补 version、timestamp 和 topic。
 
 ```go
 res, err := client.AGV(mfr, sn).PublishOrder(ctx, ord)
 switch navlink.ClassifyPublish(err) {
 case navlink.PublishOutcomeAccepted:
-    // MQTT QoS handshake OK (broker accepted) — not "vehicle accepted order"
+    // MQTT QoS 握手成功（broker 收下），不是「车已接受 order」
     _ = res.Topic
 case navlink.PublishOutcomeNotStarted:
-    // IDs may be reused
+    // 协议 ID 可以再用
 case navlink.PublishOutcomeUncertain:
-    // timeout / cancel after send: do not reuse IDs
+    // 发送后超时 / 取消：不要复用这组 ID
 }
-// predicates still available for logs: IsPublishNotStarted / IsPublishTimeout / …
 ```
 
-默认在 Publish 前做**轻量校验**（不分配 ID）：`headerId==0`、空 `orderId`、
-`orderUpdateId==0`、空 `actionId`、与 `AGVHandle` 身份不一致 → `OutboundValidationFailed`。
-可用 `Config.OutboundValidation` 关闭或放宽。
+发布前默认做轻量校验（`headerId == 0`、空 `orderId` 等），可用 `Config.OutboundValidation` 调整。
 
-标准瞬时动作有 helper（`CancelOrder`、`StartPause` / `StopPause`、
-`InitPosition`、`StateRequest`、`FactsheetRequest`，以及无参的官方
-`StartCharging` / `StopCharging`）。调用方仍填 `headerId` / `actionId`。
-厂商动作或额外参数继续用 `PublishInstantActions`。
+官方瞬时动作有 helper：`CancelOrder`、`StartPause` / `StopPause`、`InitPosition`、`StateRequest`、`FactsheetRequest`，以及无参的 `StartCharging` / `StopCharging`。厂商自定义 `actionType` 仍走 `PublishInstantActions`。
 
-可选 `Config.InboundPolicy`（如 `NewHeaderSequencePolicy()`）按 headerId 标注
-`Accept|Stale|Duplicate` 到 `Envelope.InboundDisposition` / Meta；**默认不丢包**。
+可选 `Config.InboundPolicy`（例如 `NewHeaderSequencePolicy()`）在 envelope 上标注 `Accept|Stale|Duplicate`，**默认不丢包**。
 
-入站 `Config.IdentityMapper`：`(mfr, sn) → robotID`，写入 `Envelope.RobotID`。  
-厂商字段（如 KC `currentNodeId`）走 `Config.Extensions` → `Envelope.Meta`，见 [extend/README.md](extend/README.md)。
+`Config.IdentityMapper` 把 `(manufacturer, serial) → robotID` 写到 `Envelope.RobotID`。厂商扩展字段走 `Config.Extensions` → `Envelope.Meta`，见 [extend/README.md](extend/README.md)。
 
-**sim / dispatcher 共用同一 `Client` API**（FakeBroker 或真 MQTT），不要再维护第二套协议客户端。
+同一套 `Client` 可对接真实 MQTT，或 `testkit` 里的 FakeBroker。
 
-## 非目标
+## 范围
 
-navlink 是协议 **执行端**，**不做**也不逐渐滑向：
+navlink 只做 **协议执行**，不做：
 
-- `headerId` / `orderUpdateId` / `actionId` 分配与水位（属调度编排）
-- UNCERTAIN fencing / 连续性重发策略（库只分类，不 fence）
-- ID 拒收恢复、completion、unique-publish 业务门闸
-- 选车、任务分解、RHCR、交管、充电、completion / grant 等业务判定
-- 跨进程中台、默认 Redis EventBus、多租户协议网关
-- 大而全 Processor / 插件微内核
-- 用库代码强制消费方架构
-- 领域事件（如 `EpisodeOpened`）——平台用 `Emit` 自行挂载
+- `headerId` / `orderUpdateId` / `actionId` 的分配与水位
+- `Uncertain` 之后的 fencing / 换号重发
+- 选车、路径规划、交通管制、何时充电等业务判定
+- 默认 Redis / 跨进程 EventBus、多租户网关
+- 规定消费方如何分层
+- 领域事件——需要的话用 `Emit` 自己挂
 
-VDA 收发走 `Client` / `AGV`；非 VDA 的 application MQTT 用 `Client.Transport()`。
+VDA 收发走 `Client` / `AGV`；其它应用 MQTT 走 `Client.Transport()`。
 
-详见 [CHANGELOG.md](CHANGELOG.md) 与 [outbound/README.md](outbound/README.md)。
+更多见 [CHANGELOG.md](CHANGELOG.md)、[outbound/README.md](outbound/README.md)。
+
+## 开发
+
+本仓库用 **direnv + Nix**（`.envrc` → `github:kalifun/devshells#go-1_25`）：
+
+```bash
+direnv allow
+make test
+make check   # generr + fmt + vet + test
+```
+
+错误码由 [glitch](https://github.com/kalifun/glitch) 从 `errors/*.yaml` 生成：
+
+```bash
+make generr
+```
+
+请勿手改 `gerrors/` 下的生成文件。
+
+## License
+
+[MIT](LICENSE)
