@@ -47,7 +47,9 @@ func (f *fakeSub) has(filter string) bool {
 func TestFleetConnectionDrivesTrackUntrack(t *testing.T) {
 	sub := &fakeSub{}
 	topics := topic.Resolver{Interface: "uagv", Version: "v2"}
-	fleet := session.NewFleetSession(topics, sub.subscribe, session.DefaultOptions())
+	opts := session.DefaultOptions()
+	opts.AutoTrackFromConnection = true
+	fleet := session.NewFleetSession(topics, sub.subscribe, opts)
 
 	var online, offline int
 	fleet.OnAGVOnline(func(agv session.AGV) { online++ })

@@ -10,11 +10,13 @@ import (
 )
 
 // StateHandler handles a decoded state message.
-// It runs on the inbound worker and must return quickly: no HTTP, no long
-// locks, no waiting for MQTT Publish. Do slow work in another goroutine.
+// It runs on the inbound worker and must return quickly: no HTTP, no Subscribe,
+// no long locks, no waiting for MQTT Publish. Do slow work in another goroutine.
 type StateHandler func(ctx context.Context, env Envelope, msg *state.State) error
 
 // ConnectionHandler handles a decoded connection message.
+// Same rules as StateHandler. Do not Client.Track / Subscribe here; use a
+// platform queue or explicit Track outside the inbound path.
 type ConnectionHandler func(ctx context.Context, env Envelope, msg *connection.Connection) error
 
 // VisualizationHandler handles a decoded visualization message.

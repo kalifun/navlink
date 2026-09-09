@@ -180,11 +180,9 @@ func (c *Client) invokeState(ctx context.Context, env Envelope, msg *state.State
 }
 
 func (c *Client) invokeConnection(ctx context.Context, env Envelope, msg *connection.Connection) error {
-	if c.fleet != nil {
-		if err := c.fleet.HandleConnection(ctx, sessionAGV(env.AGV), msg.ConnectionState); err != nil {
-			return err
-		}
-	}
+	// Never Track/Subscribe here: that blocks the inbound path. Opt-in AutoTrack
+	// is queued onto a dedicated worker (see scheduleAutoTrack).
+	c.scheduleAutoTrack(env, msg.ConnectionState)
 	c.mu.RLock()
 	bus := c.bus
 	handlers := append([]ConnectionHandler(nil), c.connHandlers...)

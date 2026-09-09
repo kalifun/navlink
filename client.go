@@ -43,6 +43,11 @@ type Client struct {
 	onTransportDown         func(error)
 	onHandlerError          HandlerErrorHandler
 	onSubscriptionsRestored func(error)
+
+	fleetJobs chan fleetConnJob
+	fleetStop context.CancelFunc
+	fleetDone <-chan struct{}
+	fleetWG   sync.WaitGroup
 }
 
 type topicSub struct {
@@ -221,6 +226,7 @@ func (c *Client) OnAGVOffline(h func(Identity)) {
 }
 
 // Track manually tracks an AGV (subscribes per-AGV channels). Requires Fleet.
+// Call from a platform goroutine/queue — not from an On* inbound handler.
 func (c *Client) Track(ctx context.Context, manufacturer, serial string) error {
 	if c.fleet == nil {
 		return gerrors.NewInvalidConfigWithArgs("Fleet session is not enabled")
@@ -277,6 +283,7 @@ func (c *Client) Start(ctx context.Context) error {
 		return err
 	}
 
+	c.startFleetAutoTrack()
 	c.started = true
 	up := c.onTransportUp
 	c.mu.Unlock()
@@ -301,6 +308,8 @@ func (c *Client) Stop(ctx context.Context) error {
 	transport := c.transport
 	c.started = false
 	c.mu.Unlock()
+
+	c.stopFleetAutoTrack()
 
 	var firstErr error
 	if fleet != nil {

@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.9.2 — 2026-09-09
+
+Inbound boundary P0: typed worker never Subscribe; AutoTrack opt-in and async.
+
+### Changed
+
+- `DefaultFleetOptions().AutoTrackFromConnection` is **false**. Prefer explicit
+  `Client.Track` from a platform queue.
+- `invokeConnection` no longer calls `FleetSession.HandleConnection` on the
+  inbound path. Opt-in AutoTrack runs on a dedicated worker so Subscribe cannot
+  stall typed handlers.
+- README / handler godoc: ban Subscribe/Track/HTTP on the inbound path; point to
+  [docs/INBOUND_BOUNDARY.md](docs/INBOUND_BOUNDARY.md).
+
+### Migration
+
+1. Stop relying on ONLINE → automatic state subscribe.
+2. After ONLINE (in your own goroutine), call `Track`, or set
+   `FleetOptions.AutoTrackFromConnection = true` if you still want the helper.
+3. Keep `On*` handlers memory-only.
+
 ## 0.9.1 — 2026-09-09
 
 Inbound observability: enqueue vs worker start, and handler-must-be-fast docs.

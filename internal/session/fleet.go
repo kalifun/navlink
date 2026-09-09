@@ -24,6 +24,8 @@ type Options struct {
 	// SubscribeVisualization subscribes per-AGV visualization when tracked.
 	SubscribeVisualization bool
 	// AutoTrackFromConnection tracks on ONLINE and untracks on OFFLINE/CONNECTIONBROKEN.
+	// Default false. When enabled by Client, HandleConnection must not run on the
+	// inbound typed worker (Subscribe is blocking IO).
 	AutoTrackFromConnection bool
 }
 
@@ -32,7 +34,7 @@ func DefaultOptions() Options {
 	return Options{
 		SubscribeState:          true,
 		SubscribeVisualization:  false,
-		AutoTrackFromConnection: true,
+		AutoTrackFromConnection: false,
 	}
 }
 
@@ -157,7 +159,14 @@ func (f *FleetSession) Untrack(ctx context.Context, agv AGV) error {
 	return f.untrack(ctx, agv, true)
 }
 
-// HandleConnection drives Track/Untrack from connection state when enabled.
+// AutoTrackFromConnection reports whether connection state should drive Track/Untrack.
+func (f *FleetSession) AutoTrackFromConnection() bool {
+	return f.opts.AutoTrackFromConnection
+}
+
+// HandleConnection drives Track/Untrack from connection state when AutoTrackFromConnection
+// is enabled. Callers must not invoke this on the inbound typed worker: Subscribe waits
+// on the broker and would stall every vehicle.
 func (f *FleetSession) HandleConnection(ctx context.Context, agv AGV, state connection.ConnectionState) error {
 	if !f.opts.AutoTrackFromConnection {
 		return nil

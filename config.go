@@ -15,7 +15,9 @@ type FleetOptions struct {
 	SubscribeState bool
 	// SubscribeVisualization subscribes per-AGV visualization when tracked.
 	SubscribeVisualization bool
-	// AutoTrackFromConnection tracks on ONLINE and untracks on OFFLINE/CONNECTIONBROKEN.
+	// AutoTrackFromConnection, when true, Track/Untrack from connection state on a
+	// dedicated worker (not the inbound typed path). Default false: prefer explicit
+	// Client.Track from the platform. See docs/INBOUND_BOUNDARY.md.
 	AutoTrackFromConnection bool
 }
 
@@ -24,7 +26,7 @@ func DefaultFleetOptions() FleetOptions {
 	return FleetOptions{
 		SubscribeState:          true,
 		SubscribeVisualization:  false,
-		AutoTrackFromConnection: true,
+		AutoTrackFromConnection: false,
 	}
 }
 
