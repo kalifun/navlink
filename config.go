@@ -90,6 +90,12 @@ type Config struct {
 	// state/connection back-pressure after this hook).
 	OnInboundDrop func(topic string)
 
+	// SlowInbound, if > 0, invokes OnSlowInbound when queue wait or handler
+	// runtime meets the threshold. Handlers still run synchronously on the
+	// inbound worker; this is observability only.
+	SlowInbound   time.Duration
+	OnSlowInbound func(env Envelope, cause InboundSlowCause, d time.Duration)
+
 	// RestoreSubscriptionsOnReconnect re-subscribes VDA topics after MQTT reconnect.
 	// Default true. Applies when the transport implements ReconnectAware (built-in MQTT,
 	// testkit FakeBroker). FleetSession uses Restore; other subscriptions are recreated.

@@ -7,7 +7,7 @@ Go 语言 **VDA5050 MQTT 接入 SDK**：一个 `Client` 完成主题、强类型
 ## 安装
 
 ```bash
-go get github.com/kalifun/navlink@v0.9.0
+go get github.com/kalifun/navlink@v0.9.1
 ```
 
 需要 Go 1.25+。
@@ -70,6 +70,14 @@ case navlink.PublishOutcomeUncertain:
 `Config.IdentityMapper` 把 `(manufacturer, serial) → robotID` 写到 `Envelope.RobotID`。厂商扩展字段走 `Config.Extensions` → `Envelope.Meta`，见 [extend/README.md](extend/README.md)。
 
 同一套 `Client` 可对接真实 MQTT，或 `testkit` 里的 FakeBroker。
+
+## 入站回调
+
+`OnState` / `OnConnection` / `OnTopic` 等跑在 **唯一入站 worker** 上（有意保序、不堵 Paho）。handler 必须很快返回：不要在里面做 HTTP、持长锁、或同步 `Publish` 等 PUBACK。慢活自己开 goroutine。
+
+`Envelope.ReceivedAt` 是报文入队时刻（Paho 回调），`DispatchedAt` 是 worker 开始处理的时刻，`QueueWait()` 是队列等待。不要把 `ReceivedAt` 当成「MQTT 慢」。可选 `Config.SlowInbound` + `OnSlowInbound` 在队列等待或 handler 过长时告警。
+
+自定义 `OnTopic` 与 VDA `state` 目前共一个队列：慢自定义 topic 会拖听车。库 **不会**默认把 `OnTopic` 改成异步。
 
 ## 范围
 

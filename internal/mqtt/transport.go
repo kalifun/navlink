@@ -44,16 +44,18 @@ type Config struct {
 	OnReconnect      func()
 }
 
-// Handler handles a raw MQTT message.
-type Handler func(ctx context.Context, topic string, payload []byte) error
+// Handler handles a raw MQTT message. receivedAt is when the paho callback
+// enqueued the payload (UTC), not when the inbound worker started.
+type Handler func(ctx context.Context, topic string, payload []byte, receivedAt time.Time) error
 
 // Unsubscribe cancels a subscription.
 type Unsubscribe func(ctx context.Context) error
 
 type inbound struct {
-	topic   string
-	payload []byte
-	handler Handler
+	topic      string
+	payload    []byte
+	handler    Handler
+	receivedAt time.Time
 }
 
 // Transport is a thin MQTT byte transport. It does not understand VDA5050.
@@ -261,7 +263,7 @@ func (t *Transport) runDispatch(ctx context.Context) {
 			if !ok {
 				return
 			}
-			err := msg.handler(ctx, msg.topic, msg.payload)
+			err := msg.handler(ctx, msg.topic, msg.payload, msg.receivedAt)
 			if err == nil {
 				continue
 			}
@@ -285,9 +287,10 @@ func (t *Transport) enqueue(topic string, payload []byte, handler Handler) {
 		return
 	}
 	msg := inbound{
-		topic:   topic,
-		payload: payload,
-		handler: handler,
+		topic:      topic,
+		payload:    payload,
+		handler:    handler,
+		receivedAt: time.Now().UTC(),
 	}
 	select {
 	case ch <- msg:

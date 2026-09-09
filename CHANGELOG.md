@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.1 — 2026-09-09
+
+Inbound observability: enqueue vs worker start, and handler-must-be-fast docs.
+
+### Added
+
+- `Envelope.ReceivedAt` is the MQTT enqueue time (paho callback). `DispatchedAt`
+  is when the inbound worker started. `QueueWait()` is the difference.
+- Optional `Config.SlowInbound` + `OnSlowInbound` when queue wait or handler
+  runtime meets the threshold (still synchronous; not auto-async).
+
+### Changed
+
+- README / handler godoc: `On*` / `OnTopic` must return quickly (no HTTP or
+  long locks on the inbound worker).
+
 ## 0.9.0 — 2026-08-24
 
 Public API surface: this library is consumed as `Client`, not as a bag of

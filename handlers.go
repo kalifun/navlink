@@ -10,6 +10,8 @@ import (
 )
 
 // StateHandler handles a decoded state message.
+// It runs on the inbound worker and must return quickly: no HTTP, no long
+// locks, no waiting for MQTT Publish. Do slow work in another goroutine.
 type StateHandler func(ctx context.Context, env Envelope, msg *state.State) error
 
 // ConnectionHandler handles a decoded connection message.
@@ -22,6 +24,7 @@ type VisualizationHandler func(ctx context.Context, env Envelope, msg *visualiza
 type FactsheetHandler func(ctx context.Context, env Envelope, msg *factsheet.Factsheet) error
 
 // TopicHandler is the escape hatch for non-typed topic filters.
+// Same threading rules as StateHandler: keep it short or you stall every vehicle.
 type TopicHandler func(ctx context.Context, env Envelope) error
 
 // DecodeErrorHandler observes decode/identity failures without crashing the process.

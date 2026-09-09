@@ -3,6 +3,7 @@ package navlink
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/kalifun/navlink/internal/mqtt"
 )
@@ -34,7 +35,9 @@ func (t *mqttTransport) Publish(ctx context.Context, topic string, payload []byt
 }
 
 func (t *mqttTransport) Subscribe(ctx context.Context, filter string, handler RawHandler) (Unsubscribe, error) {
-	unsub, err := t.inner.Subscribe(ctx, filter, mqtt.Handler(handler))
+	unsub, err := t.inner.Subscribe(ctx, filter, func(ctx context.Context, topic string, payload []byte, receivedAt time.Time) error {
+		return handler(contextWithInboundReceivedAt(ctx, receivedAt), topic, payload)
+	})
 	if err != nil {
 		return nil, err
 	}

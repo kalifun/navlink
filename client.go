@@ -132,6 +132,7 @@ func (c *Client) Topics() topic.Resolver { return c.topics }
 func (c *Client) Transport() Transport { return c.transport }
 
 // OnState registers a typed state handler (may be called before Start).
+// The handler runs on the inbound worker and must return quickly; see StateHandler.
 // With an EventBus attached, the handler is registered on EventStateReceived.
 func (c *Client) OnState(h StateHandler) {
 	if h == nil {

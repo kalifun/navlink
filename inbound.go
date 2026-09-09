@@ -3,7 +3,6 @@ package navlink
 import (
 	"context"
 	"encoding/json"
-	"time"
 
 	vda5050 "github.com/kalifun/vda5050-types-go"
 	"github.com/kalifun/vda5050-types-go/connection"
@@ -17,9 +16,12 @@ import (
 )
 
 func (c *Client) onRawMessage(ctx context.Context, rawTopic string, payload []byte) error {
+	receivedAt, dispatchedAt := envelopeTimes(ctx)
 	parsed, err := c.topics.Parse(rawTopic)
 	if err != nil {
-		c.reportDecode(ctx, Envelope{Topic: rawTopic, Raw: payload, ReceivedAt: time.Now().UTC()}, err)
+		env := Envelope{Topic: rawTopic, Raw: payload, ReceivedAt: receivedAt, DispatchedAt: dispatchedAt}
+		c.reportDecode(ctx, env, err)
+		c.noteInbound(env)
 		return nil
 	}
 
@@ -28,12 +30,14 @@ func (c *Client) onRawMessage(ctx context.Context, rawTopic string, payload []by
 			Manufacturer: parsed.Manufacturer,
 			SerialNumber: parsed.SerialNumber,
 		},
-		Topic:      rawTopic,
-		Channel:    parsed.Channel,
-		Raw:        payload,
-		ReceivedAt: time.Now().UTC(),
-		Meta:       Meta{},
+		Topic:        rawTopic,
+		Channel:      parsed.Channel,
+		Raw:          payload,
+		ReceivedAt:   receivedAt,
+		DispatchedAt: dispatchedAt,
+		Meta:         Meta{},
 	}
+	defer func() { c.noteInbound(env) }()
 	if c.cfg.IdentityMapper != nil {
 		env.RobotID = c.cfg.IdentityMapper(parsed.Manufacturer, parsed.SerialNumber)
 	}
@@ -104,11 +108,13 @@ func (c *Client) finishHandler(env Envelope, err error) error {
 }
 
 func (c *Client) dispatchTopic(ctx context.Context, rawTopic string, payload []byte, h TopicHandler) error {
+	receivedAt, dispatchedAt := envelopeTimes(ctx)
 	env := Envelope{
-		Topic:      rawTopic,
-		Raw:        payload,
-		ReceivedAt: time.Now().UTC(),
-		Meta:       Meta{},
+		Topic:        rawTopic,
+		Raw:          payload,
+		ReceivedAt:   receivedAt,
+		DispatchedAt: dispatchedAt,
+		Meta:         Meta{},
 	}
 	if parsed, err := c.topics.Parse(rawTopic); err == nil {
 		env.AGV = Identity{Manufacturer: parsed.Manufacturer, SerialNumber: parsed.SerialNumber}
@@ -117,7 +123,9 @@ func (c *Client) dispatchTopic(ctx context.Context, rawTopic string, payload []b
 			env.RobotID = c.cfg.IdentityMapper(parsed.Manufacturer, parsed.SerialNumber)
 		}
 	}
-	return c.finishHandler(env, h(ctx, env))
+	err := c.finishHandler(env, h(ctx, env))
+	c.noteInbound(env)
+	return err
 }
 
 func (c *Client) checkIdentity(env Envelope) error {
