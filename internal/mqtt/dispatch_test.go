@@ -324,3 +324,93 @@ func TestInboundDropReasons(t *testing.T) {
 		t.Fatal("blocked enqueue did not finish after drain")
 	}
 }
+
+func TestConnectionCoalesceLatestWins(t *testing.T) {
+	tr := startTestDispatch(t, Config{InboundQueueSize: 8})
+
+	var (
+		mu      sync.Mutex
+		got     []string
+		started = make(chan struct{})
+		block   = make(chan struct{})
+	)
+	handler := func(ctx context.Context, topic string, payload []byte, receivedAt time.Time) error {
+		mu.Lock()
+		got = append(got, string(payload))
+		n := len(got)
+		mu.Unlock()
+		if n == 1 {
+			close(started)
+			<-block
+		}
+		return nil
+	}
+
+	tr.enqueue("uagv/v2/M/S1/connection", []byte(`online-1`), handler)
+	select {
+	case <-started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("first connection handler did not start")
+	}
+
+	tr.enqueue("uagv/v2/M/S1/connection", []byte(`offline`), handler)
+	tr.enqueue("uagv/v2/M/S1/connection", []byte(`online-2`), handler)
+	close(block)
+
+	deadline := time.After(2 * time.Second)
+	for {
+		mu.Lock()
+		n := len(got)
+		snapshot := append([]string(nil), got...)
+		mu.Unlock()
+		if n >= 2 {
+			if n != 2 || snapshot[0] != "online-1" || snapshot[1] != "online-2" {
+				t.Fatalf("got=%v want [online-1 online-2]", snapshot)
+			}
+			return
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("got=%v", snapshot)
+		case <-time.After(5 * time.Millisecond):
+		}
+	}
+}
+
+func TestConnectionCoalesceKeepsDistinctAGVs(t *testing.T) {
+	tr := startTestDispatch(t, Config{InboundQueueSize: 8})
+
+	var (
+		mu   sync.Mutex
+		got  []string
+		done = make(chan struct{})
+	)
+	handler := func(ctx context.Context, topic string, payload []byte, receivedAt time.Time) error {
+		mu.Lock()
+		got = append(got, string(payload))
+		n := len(got)
+		mu.Unlock()
+		if n == 2 {
+			close(done)
+		}
+		return nil
+	}
+
+	tr.enqueue("uagv/v2/M/S1/connection", []byte(`s1`), handler)
+	tr.enqueue("uagv/v2/M/S2/connection", []byte(`s2`), handler)
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout")
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(got) != 2 {
+		t.Fatalf("got=%v", got)
+	}
+	seen := map[string]bool{got[0]: true, got[1]: true}
+	if !seen["s1"] || !seen["s2"] {
+		t.Fatalf("got=%v", got)
+	}
+}

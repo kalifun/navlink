@@ -22,7 +22,7 @@ func classifyInbound(topic string) (lane inboundLane, shardKey string) {
 	sn := parts[len(parts)-2]
 	switch channel {
 	case "connection":
-		return laneConnection, ""
+		return laneConnection, mfr + "/" + sn
 	case "state", "visualization", "factsheet":
 		return laneAGV, mfr + "/" + sn
 	default:
@@ -31,5 +31,6 @@ func classifyInbound(topic string) (lane inboundLane, shardKey string) {
 }
 
 func droppableTopic(topic string) bool {
-	return strings.HasSuffix(topic, "/visualization")
+	parts := strings.Split(topic, "/")
+	return len(parts) >= 5 && parts[len(parts)-1] == "visualization"
 }

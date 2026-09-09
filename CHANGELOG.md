@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.9.4 — 2026-09-09
+
+Connection storms coalesce to latest state per AGV; tighter viz droppable check.
+
+### Added
+
+- MQTT connection lane: pending messages for the same `(manufacturer, serial)`
+  collapse to the newest payload (latest wins) before dispatch.
+
+### Changed
+
+- Visualization droppable only when the topic looks like a VDA channel
+  (`…/mfr/sn/visualization`), not any suffix match.
+
 ## 0.9.3 — 2026-09-09
 
 Inbound delivery B: per-AGV shards, isolated connection/OnTopic lanes, drop reasons.

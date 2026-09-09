@@ -70,7 +70,8 @@ type Transport struct {
 	onReconnect    func()
 	onLost         func(error)
 	qsize          int
-	connQ          chan inbound
+	connLatest     map[string]inbound
+	connWake       chan struct{}
 	topicQ         chan inbound
 	shards         map[string]chan inbound
 	dispatchCtx    context.Context
@@ -211,7 +212,8 @@ func (t *Transport) shutdownDispatch() {
 	cancel := t.dispatchCancel
 	t.dispatchCancel = nil
 	t.dispatchCtx = nil
-	t.connQ = nil
+	t.connLatest = nil
+	t.connWake = nil
 	t.topicQ = nil
 	t.shards = nil
 	t.client = nil
@@ -237,7 +239,8 @@ func (t *Transport) Stop(ctx context.Context) error {
 	cancel := t.dispatchCancel
 	t.dispatchCancel = nil
 	t.dispatchCtx = nil
-	t.connQ = nil
+	t.connLatest = nil
+	t.connWake = nil
 	t.topicQ = nil
 	t.shards = nil
 	client := t.client
