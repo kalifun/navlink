@@ -26,7 +26,8 @@ type VisualizationHandler func(ctx context.Context, env Envelope, msg *visualiza
 type FactsheetHandler func(ctx context.Context, env Envelope, msg *factsheet.Factsheet) error
 
 // TopicHandler is the escape hatch for non-typed topic filters.
-// Same threading rules as StateHandler: keep it short or you stall every vehicle.
+// Same threading rules as StateHandler. On the built-in MQTT transport, custom
+// topics share an isolated lane (not the per-AGV state shards).
 type TopicHandler func(ctx context.Context, env Envelope) error
 
 // DecodeErrorHandler observes decode/identity failures without crashing the process.

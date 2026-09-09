@@ -86,11 +86,12 @@ type Config struct {
 	TLS            *tls.Config
 	Will           *LastWill
 
-	// InboundQueueSize is the paho-callback → worker queue length (default 256).
+	// InboundQueueSize is each inbound lane/shard queue length (default 256).
 	InboundQueueSize int
-	// OnInboundDrop is called when the inbound queue is full (viz may be dropped;
-	// state/connection back-pressure after this hook).
-	OnInboundDrop func(topic string)
+	// OnInboundDrop is called when an inbound queue is full.
+	// InboundDropped: message discarded (visualization).
+	// InboundBackpressured: callback will block until space (message not lost).
+	OnInboundDrop func(topic string, reason InboundDropReason)
 
 	// SlowInbound, if > 0, invokes OnSlowInbound when queue wait or handler
 	// runtime meets the threshold. Handlers still run synchronously on the

@@ -107,7 +107,7 @@ func New(cfg Config) (*Client, error) {
 			TLS:              cfg.TLS,
 			Will:             will,
 			InboundQueueSize: cfg.InboundQueueSize,
-			OnInboundDrop:    cfg.OnInboundDrop,
+			OnInboundDrop:    mapInboundDrop(cfg.OnInboundDrop),
 		})
 	}
 
@@ -513,6 +513,19 @@ func (c *Client) requireStarted() error {
 		return gerrors.ClientNotStarted
 	}
 	return nil
+}
+
+func mapInboundDrop(fn func(topic string, reason InboundDropReason)) func(topic string, reason mqtt.DropReason) {
+	if fn == nil {
+		return nil
+	}
+	return func(topic string, reason mqtt.DropReason) {
+		mapped := InboundBackpressured
+		if reason == mqtt.DropDiscarded {
+			mapped = InboundDropped
+		}
+		fn(topic, mapped)
+	}
 }
 
 func fleetSessionOptions(fo FleetOptions) session.Options {

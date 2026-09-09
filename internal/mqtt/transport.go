@@ -38,7 +38,7 @@ type Config struct {
 	Will           *Will
 
 	InboundQueueSize int
-	OnInboundDrop    func(topic string)
+	OnInboundDrop    func(topic string, reason DropReason)
 	OnHandlerError   func(topic string, err error)
 	OnConnectionLost func(error)
 	OnReconnect      func()
@@ -69,7 +69,10 @@ type Transport struct {
 	wasConnected   bool
 	onReconnect    func()
 	onLost         func(error)
-	inbound        chan inbound
+	qsize          int
+	connQ          chan inbound
+	topicQ         chan inbound
+	shards         map[string]chan inbound
 	dispatchCtx    context.Context
 	dispatchCancel context.CancelFunc
 	dispatchWG     sync.WaitGroup
@@ -147,18 +150,9 @@ func (t *Transport) Start(ctx context.Context) error {
 		opts.SetBinaryWill(t.cfg.Will.Topic, t.cfg.Will.Payload, t.cfg.Will.QoS, t.cfg.Will.Retain)
 	}
 
-	qsize := t.cfg.InboundQueueSize
-	if qsize <= 0 {
-		qsize = defaultInboundQueue
-	}
-	t.inbound = make(chan inbound, qsize)
-	dispatchCtx, cancel := context.WithCancel(context.Background())
-	t.dispatchCtx = dispatchCtx
-	t.dispatchCancel = cancel
 	t.stopping = false
 	t.client = pahomqtt.NewClient(opts)
-	t.dispatchWG.Add(1)
-	go t.runDispatch(dispatchCtx)
+	t.startDispatchLocked()
 	t.mu.Unlock()
 
 	token := t.client.Connect()
@@ -217,6 +211,9 @@ func (t *Transport) shutdownDispatch() {
 	cancel := t.dispatchCancel
 	t.dispatchCancel = nil
 	t.dispatchCtx = nil
+	t.connQ = nil
+	t.topicQ = nil
+	t.shards = nil
 	t.client = nil
 	t.running = false
 	t.wasConnected = false
@@ -240,6 +237,9 @@ func (t *Transport) Stop(ctx context.Context) error {
 	cancel := t.dispatchCancel
 	t.dispatchCancel = nil
 	t.dispatchCtx = nil
+	t.connQ = nil
+	t.topicQ = nil
+	t.shards = nil
 	client := t.client
 	t.mu.Unlock()
 
@@ -251,71 +251,6 @@ func (t *Transport) Stop(ctx context.Context) error {
 	}
 	t.dispatchWG.Wait()
 	return nil
-}
-
-func (t *Transport) runDispatch(ctx context.Context) {
-	defer t.dispatchWG.Done()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case msg, ok := <-t.inbound:
-			if !ok {
-				return
-			}
-			err := msg.handler(ctx, msg.topic, msg.payload, msg.receivedAt)
-			if err == nil {
-				continue
-			}
-			t.mu.RLock()
-			h := t.cfg.OnHandlerError
-			t.mu.RUnlock()
-			if h != nil {
-				h(msg.topic, err)
-			}
-		}
-	}
-}
-
-func (t *Transport) enqueue(topic string, payload []byte, handler Handler) {
-	t.mu.RLock()
-	ch := t.inbound
-	drop := t.cfg.OnInboundDrop
-	done := ctxDone(t.dispatchCtx)
-	t.mu.RUnlock()
-	if ch == nil {
-		return
-	}
-	msg := inbound{
-		topic:      topic,
-		payload:    payload,
-		handler:    handler,
-		receivedAt: time.Now().UTC(),
-	}
-	select {
-	case ch <- msg:
-		return
-	default:
-	}
-	if drop != nil {
-		drop(topic)
-	}
-	if strings.HasSuffix(topic, "/visualization") {
-		return
-	}
-	select {
-	case ch <- msg:
-	case <-done:
-	}
-}
-
-func ctxDone(ctx context.Context) <-chan struct{} {
-	if ctx == nil {
-		ch := make(chan struct{})
-		close(ch)
-		return ch
-	}
-	return ctx.Done()
 }
 
 // Publish sends a payload to topic. qos 0 is a real MQTT QoS 0 (not "use default").

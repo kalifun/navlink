@@ -7,7 +7,7 @@ Go 语言 **VDA5050 MQTT 接入 SDK**：一个 `Client` 完成主题、强类型
 ## 安装
 
 ```bash
-go get github.com/kalifun/navlink@v0.9.2
+go get github.com/kalifun/navlink@v0.9.3
 ```
 
 需要 Go 1.25+。
@@ -75,11 +75,11 @@ case navlink.PublishOutcomeUncertain:
 
 `OnState` / `OnConnection` / `OnTopic` 等跑在入站 worker 上（保序、不堵 Paho）。handler **与 SDK 内部**都必须很快返回：禁止 HTTP、`Subscribe` / `Track`、长锁、同步 `Publish` 等 PUBACK。慢活与订阅变更放到平台自己的 goroutine / 队列。
 
+MQTT 入站投递（语义 B）：按 `(manufacturer, serial)` **分片有序**；`connection` 与自定义 `OnTopic` 各有独立队列，互不饿死车态。`OnInboundDrop(topic, reason)`：`InboundDropped` 为真丢（visualization 满队列）；`InboundBackpressured` 为背压（将阻塞等待，未丢）。
+
 `FleetSession` 是可选助手：默认 **不会**因 ONLINE 自动订 state。需要时显式 `Client.Track`，或 opt-in `FleetOptions.AutoTrackFromConnection`（Track 在独立 worker，不堵 typed 入站）。边界说明见 [docs/INBOUND_BOUNDARY.md](docs/INBOUND_BOUNDARY.md)。
 
 `Envelope.ReceivedAt` 是报文入队时刻（Paho 回调），`DispatchedAt` 是 worker 开始处理的时刻，`QueueWait()` 是队列等待。不要把 `ReceivedAt` 当成「MQTT 慢」。可选 `Config.SlowInbound` + `OnSlowInbound` 在队列等待或 handler 过长时告警。
-
-自定义 `OnTopic` 与 VDA `state` 目前共一个队列：慢自定义 topic 会拖听车。库 **不会**默认把 `OnTopic` 改成异步（分片投递见入站边界 P1）。
 
 ## 范围
 

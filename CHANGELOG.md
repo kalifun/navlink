@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.9.3 — 2026-09-09
+
+Inbound delivery B: per-AGV shards, isolated connection/OnTopic lanes, drop reasons.
+
+### Added
+
+- MQTT inbound: `(manufacturer, serial)` shard workers for state/viz/factsheet;
+  dedicated queues for `connection` and non-VDA `OnTopic` filters.
+- `OnInboundDrop(topic, InboundDropReason)` with `InboundDropped` vs
+  `InboundBackpressured`.
+
+### Changed
+
+- `Config.OnInboundDrop` signature gains a reason argument (breaking for callers
+  that already hooked it).
+- `InboundQueueSize` is the per-lane / per-shard buffer length.
+
 ## 0.9.2 — 2026-09-09
 
 Inbound boundary P0: typed worker never Subscribe; AutoTrack opt-in and async.
